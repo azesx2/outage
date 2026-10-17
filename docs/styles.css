@@ -1,37 +1,42 @@
+/* Three colours only: green = light is on, graphite = no light, amber = now. Everything else is
+   neutral. Layout: status cards above a 48-hour chart, Квартира left, hours in the middle,
+   Будинок right. */
 :root {
-  --bg: #f6f7f9;
+  --bg: #f3f4f1;
   --surface: #ffffff;
-  --text: #16181d;
-  --muted: #5b6270;
-  --border: #dde1e7;
-  --focus: #1f6feb;
-  --on: #1d7a46;
-  --on-bg: #e3f4ea;
-  --off: #b42318;
-  --off-bg: #fde8e6;
-  --unknown: #5b6270;
-  --unknown-bg: #eceef2;
+  --text: #1d2127;
+  --muted: #646b75;
+  --border: #d9dcd6;
+  --focus: #2563eb;
+  --lit: #86d39b;
+  --lit-ink: #1f7a3d;
+  --dark: #2b2f37;
+  --dark-text: #f4f1e6;
+  --now: #f5a524;
+  --hatch-a: #e3e4df;
+  --hatch-b: #f6f6f3;
   --warn-text: #6b4500;
   --warn-bg: #fff3d6;
-  --warn-border: #f5a524;
   --radius: 12px;
+  --font-num: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111317;
-    --surface: #1a1d23;
-    --text: #eceef2;
-    --muted: #a3aab8;
-    --border: #2d323b;
-    --focus: #58a6ff;
-    --on: #5fd68f;
-    --on-bg: #133222;
-    --off: #ff8a80;
-    --off-bg: #3b1714;
-    --unknown: #a3aab8;
-    --unknown-bg: #252932;
+    --bg: #121418;
+    --surface: #1a1d22;
+    --text: #eceae3;
+    --muted: #9aa0a8;
+    --border: #2e333b;
+    --focus: #6ea8ff;
+    --lit: #3f9c5d;
+    --lit-ink: #6fdc8f;
+    --dark: #050608;
+    --dark-text: #e8e4d6;
+    --now: #fbbf24;
+    --hatch-a: #262a31;
+    --hatch-b: #1a1d22;
     --warn-text: #ffd88a;
     --warn-bg: #3a2c0c;
   }
@@ -56,7 +61,7 @@ body {
 .page-header,
 main,
 .page-footer {
-  max-width: 960px;
+  max-width: 860px;
   margin: 0 auto;
   padding: 0 16px;
 }
@@ -69,11 +74,6 @@ h1 {
   font-size: 1.5rem;
   line-height: 1.25;
   margin: 0 0 4px;
-}
-
-h2 {
-  font-size: 1.05rem;
-  margin: 0 0 12px;
 }
 
 .page-footer {
@@ -108,7 +108,8 @@ a {
 }
 
 .error h2 {
-  color: var(--off);
+  font-size: 1.05rem;
+  margin: 0 0 12px;
 }
 
 .actions {
@@ -134,110 +135,295 @@ button {
   border-radius: var(--radius);
   background: var(--warn-bg);
   color: var(--warn-text);
-  border: 2px solid var(--warn-border);
+  border: 2px solid var(--now);
   font-weight: 600;
 }
 
-/* One card per displayed group, side by side when there is room. */
-.groups {
-  display: grid;
-  gap: 0 16px;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+.hatch,
+.head[data-s='unknown'] {
+  background: repeating-linear-gradient(135deg, var(--hatch-a) 0 8px, var(--hatch-b) 8px 16px);
 }
 
-.group h2 {
-  font-size: 1.25rem;
-}
-
-/* Light indicator: always visible per group. */
-.indicator {
-  border: 2px solid var(--unknown);
+/* Board: cards and chart share the same three columns. */
+.board {
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--unknown-bg);
-  padding: 12px 16px;
-  margin-bottom: 16px;
+  padding: 14px;
+  margin: 16px 0;
 }
 
-.indicator[data-status='off'] {
-  background: var(--off-bg);
-  border-color: var(--off);
+.heads,
+.chart {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.8em minmax(0, 1fr);
+  gap: 8px;
 }
 
-.indicator[data-status='on'] {
-  background: var(--on-bg);
-  border-color: var(--on);
+.heads {
+  margin-bottom: 10px;
 }
 
-.indicator p {
+/* Each card sits above its own bar; the middle (axis) column stays empty. */
+.heads .head:first-child {
+  grid-column: 1;
+  text-align: right;
+}
+
+.heads .head:last-child {
+  grid-column: 3;
+}
+
+/* Status cards: neutral, only the state word and its dot are coloured. */
+.head {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  min-height: 96px;
+}
+
+.head p {
   margin: 0;
 }
 
-.status-label {
-  font-size: 1.75rem;
+.head .name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+.head .state {
+  font-size: 1.2rem;
   font-weight: 700;
   line-height: 1.2;
-  margin-bottom: 6px !important;
 }
 
-.indicator[data-status='off'] .status-label {
-  color: var(--off);
+.head .state::before {
+  content: '';
+  display: inline-block;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  margin: 0 0.4em 0.08em;
+  background: var(--muted);
 }
 
-.indicator[data-status='on'] .status-label {
-  color: var(--on);
+.head[data-s='on'] .state {
+  color: var(--lit-ink);
 }
 
-.status-next {
-  font-size: 1.05rem;
+.head[data-s='on'] .state::before {
+  background: var(--lit);
 }
 
-.status-countdown {
-  font-size: 1.25rem;
+.head[data-s='off'] .state::before {
+  background: var(--dark);
+}
+
+.head .next {
+  font-size: 0.875rem;
+}
+
+.head .count {
+  font-family: var(--font-num);
   font-weight: 700;
+  font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
 }
 
-.day h3 {
-  font-size: 0.95rem;
-  font-weight: 600;
-  margin: 12px 0 6px;
+/* Chart */
+.chart {
+  position: relative;
 }
 
-.timeline {
+.side,
+.axis {
   position: relative;
-  height: 20px;
-  border-radius: 6px;
-  background: var(--on-bg);
-  border: 1px solid var(--border);
-  margin-bottom: 4px;
+}
+
+.track {
+  position: absolute;
+  inset: 0;
+  background: var(--lit);
+  border-radius: 8px;
   overflow: hidden;
 }
 
-.timeline.unpublished {
-  background: var(--unknown-bg);
-}
-
-.timeline .segment {
+.blk {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  background: var(--off);
-}
-
-.timeline .now {
-  position: absolute;
-  top: -2px;
-  bottom: -2px;
-  width: 2px;
-  background: var(--text);
-}
-
-.timeline + .ticks {
+  left: 0;
+  right: 0;
   display: flex;
-  justify-content: space-between;
-  color: var(--muted);
+  gap: 6px;
+  align-items: center;
+  padding: 0 10px;
+  background: var(--dark);
+  color: var(--dark-text);
+  font-family: var(--font-num);
   font-size: 0.75rem;
-  margin-bottom: 0;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  border-top: 1px solid var(--surface);
+  border-bottom: 1px solid var(--surface);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.side.l .blk {
+  justify-content: flex-end;
+}
+
+.blk small {
+  opacity: 0.75;
+}
+
+.blk small::before {
+  content: '· ';
+}
+
+.gap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--surface);
+}
+
+.unpub {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 4px;
+  padding: 18px 8px;
+  text-align: center;
+  background: repeating-linear-gradient(135deg, var(--hatch-a) 0 8px, var(--hatch-b) 8px 16px);
+}
+
+.unpub strong {
+  font-size: 0.85rem;
+  line-height: 1.3;
+  background: var(--surface);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.unpub span {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.axis span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  transform: translateY(-50%);
+  font-family: var(--font-num);
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.axis span.faded {
+  opacity: 0.35;
+}
+
+.axis .day {
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.68rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 0;
+  z-index: 1;
+}
+
+.axis .day:first-child {
+  transform: none;
+}
+
+.daysplit {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 2px dashed var(--muted);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* "Now": dashed amber line, outlined time label, coloured next-event labels on each side. */
+.nowline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 2px dashed var(--now);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.nowline b {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--now);
+  font-family: var(--font-num);
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.nowline em {
+  position: absolute;
+  top: 4px;
+  /* Never wider than its own bar; long labels wrap instead of being cut. */
+  max-width: calc((100% - 2.8em) / 2 - 8px);
+  font-style: normal;
+  font-family: var(--font-num);
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--surface);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.nowline em:empty {
+  display: none;
+}
+
+.nowline em.l {
+  left: 0;
+}
+
+.nowline em.r {
+  right: 0;
+}
+
+.nowline em.ev-on {
+  color: var(--lit-ink);
+  box-shadow: inset 0 0 0 1px var(--lit);
+  font-weight: 700;
+}
+
+.nowline em.ev-off {
+  color: var(--dark-text);
+  background: var(--dark);
+  box-shadow: 0 0 0 1px var(--surface);
+  font-weight: 700;
 }
 
 .meta {
@@ -257,41 +443,42 @@ button {
   font-weight: 600;
 }
 
-.table-wrap {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-variant-numeric: tabular-nums;
-}
-
-th,
-td {
-  text-align: left;
-  padding: 8px;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
-}
-
-th {
-  color: var(--muted);
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
-td:first-child {
-  font-weight: 600;
-  white-space: nowrap;
-}
-
 .page-footer {
   padding-bottom: 32px;
 }
 
-@media (max-width: 480px) {
-  .status-label {
-    font-size: 1.5rem;
+@media (max-width: 520px) {
+  .board {
+    padding: 10px;
+  }
+
+  /* Cards take the full width on phones; the chart keeps its middle axis. */
+  .heads {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .heads .head:last-child {
+    grid-column: 2;
+  }
+
+  .head {
+    padding: 8px;
+    min-height: 112px;
+  }
+
+  .head .state {
+    font-size: 1.02rem;
+  }
+
+  .blk {
+    font-size: 0.64rem;
+    padding: 0 5px;
+    gap: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nowline {
+    transition: top 0.15s ease;
   }
 }

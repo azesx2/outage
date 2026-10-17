@@ -16,20 +16,26 @@ const dictionaries = {
     nextOff: ({ when }) => `Відключення ${when}`,
     nextOn: ({ when }) => `Світло з’явиться ${when}`,
     nextOnUnknown: ({ when }) => `Світла не буде щонайменше до ${when}`,
-    nextNone: ({ date }) => `Відключень не заплановано до кінця доби ${date}`,
+    nextNoneToday: 'До 24:00 відключень немає',
+    nextNoneTomorrow: 'До кінця завтрашнього дня відключень немає',
+    tomorrowPending: 'Графік на завтра ще не опубліковано',
     at: ({ time }) => (time.startsWith('11:') ? `об ${time}` : `о ${time}`),
     tomorrowAt: ({ time }) => `завтра ${time.startsWith('11:') ? 'об' : 'о'} ${time}`,
     atLeast: ({ duration }) => `щонайменше ${duration}`,
     inDuration: ({ h, m }) =>
       h === 0 ? `через ${m} хв` : m === 0 ? `через ${h} год` : `через ${h} год ${m} хв`,
-    today: 'Сьогодні',
-    tomorrow: 'Завтра',
-    dayHeading: ({ label, date }) => `${label}, ${date}`,
-    noOutages: 'Відключень не заплановано',
-    notPublished: 'Графік ще не опубліковано',
-    allGroups: 'Відключення сьогодні',
-    groupColumn: 'Група',
-    outagesColumn: 'Відключення',
+    axisToday: 'сьогодні',
+    axisTomorrow: 'завтра',
+    lineOn: ({ rel }) => `світло ${rel}`,
+    lineOnUnknown: ({ rel }) => `світло щонайменше ${rel}`,
+    lineOff: ({ rel }) => `відключення ${rel}`,
+    lineNoneToday: 'до 24:00 без відключень',
+    lineNone: 'без відключень',
+    unpublishedDay: ({ date }) => `Графік на ${date} ще не опубліковано`,
+    unpublishedHint: 'З’явиться тут автоматично',
+    hours: ({ h }) => `${h} год`,
+    hoursMinutes: ({ h, m }) => `${h} год ${m} хв`,
+    minutes: ({ m }) => `${m} хв`,
     sourceUpdated: 'Оновлення джерела',
     lastChecked: 'Остання перевірка',
     notAvailable: 'немає',
@@ -88,6 +94,17 @@ export function createI18n(lang = 'uk') {
       if (kyivDate(ms) === today) return t('at', { time });
       if (time === '00:00' && kyivDate(ms - 1) === today) return t('at', { time: '24:00' });
       return t('tomorrowAt', { time });
+    },
+    /** Length of an interval: "3 год", "1 год 30 хв", "30 хв". */
+    duration: (ms) => {
+      const minutes = Math.round(ms / 60_000);
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return h === 0
+        ? t('minutes', { m })
+        : m === 0
+          ? t('hours', { h })
+          : t('hoursMinutes', { h, m });
     },
     relative: (ms, now) => {
       const minutes = Math.max(0, Math.round((ms - now) / 60_000));

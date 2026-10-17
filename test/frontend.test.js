@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createI18n } from '../docs/i18n.js';
-import { assertSupported, computeView, kyivMidnight, overview } from '../docs/schedule.js';
+import { assertSupported, computeView, kyivMidnight, kyivWallInstant } from '../docs/schedule.js';
 import { loadJsonDir } from './helpers.js';
 
 const valid = Object.fromEntries(loadJsonDir('output/valid'));
@@ -80,7 +80,6 @@ test('no published data is "unknown", not "on"', () => {
   assert.equal(view.status, 'unknown');
   assert.equal(view.next, null);
   assert.equal(view.today.published, false);
-  assert.equal(overview(valid['no-data-published'], '2026-10-17'), null);
 });
 
 test('after midnight with only yesterday published: unknown', () => {
@@ -106,12 +105,6 @@ test('day lengths across DST: 25 h on 2026-10-25, 23 h on 2027-03-28', () => {
   assert.equal(hours('2026-10-25', '2026-10-26'), 25);
   assert.equal(hours('2027-03-28', '2027-03-29'), 23);
   assert.equal(hours('2026-10-17', '2026-10-18'), 24);
-});
-
-test('overview lists every group for the date', () => {
-  const rows = overview(valid['current-one-day'], '2026-10-17');
-  assert.equal(rows.length, 12);
-  assert.deepEqual(rows.at(-1), { group: '6.2', intervals: [] });
 });
 
 test('rejects unsupported data formats', () => {
@@ -151,6 +144,24 @@ test('relative and elapsed durations', () => {
   assert.equal(i18n.ago(now - 20_000, now), 'щойно');
 });
 
+test('hour labels land on Kyiv wall-clock hours, including DST days', () => {
+  const iso = (ms) => new Date(ms).toISOString();
+  assert.equal(iso(kyivWallInstant('2026-10-17', 20 * 60)), '2026-10-17T17:00:00.000Z');
+  assert.equal(iso(kyivWallInstant('2026-12-01', 20 * 60)), '2026-12-01T18:00:00.000Z');
+  // After the fall-back change on 2026-10-25, 06:00 is +02:00.
+  assert.equal(iso(kyivWallInstant('2026-10-25', 6 * 60)), '2026-10-25T04:00:00.000Z');
+  assert.equal(iso(kyivWallInstant('2026-10-25', 2 * 60)), '2026-10-24T23:00:00.000Z');
+  // After the spring-forward change on 2027-03-28, 06:00 is +03:00.
+  assert.equal(iso(kyivWallInstant('2027-03-28', 6 * 60)), '2027-03-28T03:00:00.000Z');
+});
+
+test('interval durations', () => {
+  const i18n = createI18n('uk');
+  assert.equal(i18n.duration(3 * 3_600_000), '3 год');
+  assert.equal(i18n.duration(90 * 60_000), '1 год 30 хв');
+  assert.equal(i18n.duration(30 * 60_000), '30 хв');
+});
+
 test('every string used by the page exists', () => {
   const i18n = createI18n('uk');
   for (const key of [
@@ -161,13 +172,14 @@ test('every string used by the page exists', () => {
     'statusOff',
     'statusOn',
     'statusUnknown',
-    'today',
-    'tomorrow',
-    'noOutages',
-    'notPublished',
-    'allGroups',
-    'groupColumn',
-    'outagesColumn',
+    'nextNoneToday',
+    'nextNoneTomorrow',
+    'tomorrowPending',
+    'axisToday',
+    'axisTomorrow',
+    'lineNoneToday',
+    'lineNone',
+    'unpublishedHint',
     'sourceUpdated',
     'lastChecked',
     'notAvailable',
@@ -179,4 +191,10 @@ test('every string used by the page exists', () => {
   ]) {
     assert.equal(typeof i18n.t(key), 'string', key);
   }
+  assert.equal(i18n.t('lineOn', { rel: 'через 40 хв' }), 'світло через 40 хв');
+  assert.equal(i18n.t('lineOff', { rel: 'через 1 год' }), 'відключення через 1 год');
+  assert.equal(
+    i18n.t('unpublishedDay', { date: '18 жовтня' }),
+    'Графік на 18 жовтня ще не опубліковано',
+  );
 });

@@ -5,16 +5,20 @@ import { createI18n } from './i18n.js';
 import {
   assertSupported,
   computeView,
-  kyivDate,
   kyivMidnight,
-  overview,
+  kyivWallInstant,
+  nextDate,
   STALE_AFTER_MS,
 } from './schedule.js';
 
 const DATA_URL = 'data/latest.json';
 const RENDER_EVERY_MS = 30_000;
 const RELOAD_EVERY_MS = 5 * 60_000;
-/** Groups shown on the page, in order. The data still contains every group. */
+/** Vertical scale of the chart: 48 hours ≈ 980 px. */
+const PX_PER_MINUTE = 0.34;
+/** Hide the text inside outage blocks shorter than this, in pixels. */
+const MIN_LABEL_PX = 16;
+/** Groups shown on the page: the first on the left, the second on the right. */
 const DISPLAY_GROUPS = [
   { id: '2.1', labelKey: 'groupApartment' },
   { id: '3.2', labelKey: 'groupHouse' },
@@ -30,7 +34,7 @@ const el = (tag, props = {}, ...children) => {
 };
 
 let data = null;
-/** Card element references per group id, created once and updated on every render. */
+/** Status card elements per group id, created once and updated on every render. */
 const cards = new Map();
 
 function applyStaticStrings() {
@@ -46,137 +50,200 @@ function showState(state) {
   $('content').hidden = state !== 'content';
 }
 
-function createDay() {
-  const heading = el('h3');
-  const timeline = el('div', { className: 'timeline', ariaHidden: 'true' });
-  const ticks = el(
-    'div',
-    { className: 'ticks', ariaHidden: 'true' },
-    ...['00', '06', '12', '18', '24'].map((h) => el('span', { textContent: h })),
-  );
-  return { node: el('div', { className: 'day' }, heading, timeline, ticks), heading, timeline };
+function card({ id, labelKey }) {
+  if (!cards.has(id)) {
+    const state = el('p', { className: 'state', ariaLive: 'polite' });
+    const next = el('p', { className: 'next' });
+    const extra = el('p', { className: 'next' });
+    const count = el('p', { className: 'count' });
+    const node = el(
+      'section',
+      { className: 'head' },
+      el('h2', { className: 'name', textContent: t(labelKey) }),
+      state,
+      next,
+      extra,
+      count,
+    );
+    cards.set(id, { node, state, next, extra, count });
+    $('heads').append(node);
+  }
+  return cards.get(id);
 }
 
-function createCard({ id, labelKey }) {
-  const titleId = `group-${id.replace('.', '-')}-title`;
-  const label = el('p', { className: 'status-label', ariaLive: 'polite' });
-  const next = el('p', { className: 'status-next' });
-  const countdown = el('p', { className: 'status-countdown' });
-  const indicator = el('div', { className: 'indicator' }, label, next, countdown);
-  const today = createDay();
-  const tomorrow = createDay();
-  const node = el(
-    'section',
-    { className: 'card group' },
-    el('h2', { id: titleId, textContent: t(labelKey) }),
-    indicator,
-    today.node,
-    tomorrow.node,
-  );
-  node.setAttribute('aria-labelledby', titleId);
-  return { node, indicator, label, next, countdown, today, tomorrow };
-}
-
-function renderIndicator(card, view) {
+/** Texts for one group: the status card and the label on the "now" line. */
+function describe(view) {
   const { next, now } = view;
-  card.indicator.dataset.status = view.status;
-  card.label.textContent = t(
+  const tomorrowEnd = kyivMidnight(nextDate(view.tomorrow.date));
+  if (next?.type === 'off') {
+    const rel = i18n.relative(next.at, now);
+    return {
+      next: t('nextOff', { when: i18n.when(next.at, now) }),
+      count: rel,
+      line: t('lineOff', { rel }),
+      event: 'off',
+    };
+  }
+  if (next?.type === 'on') {
+    const rel = i18n.relative(next.at, now);
+    return next.known
+      ? {
+          next: t('nextOn', { when: i18n.when(next.at, now) }),
+          count: rel,
+          line: t('lineOn', { rel }),
+          event: 'on',
+        }
+      : {
+          next: t('nextOnUnknown', { when: '24:00' }),
+          count: t('atLeast', { duration: rel }),
+          line: t('lineOnUnknown', { rel }),
+          event: 'on',
+        };
+  }
+  if (next?.type === 'none') {
+    const onlyToday = next.until < tomorrowEnd;
+    return {
+      next: t(onlyToday ? 'nextNoneToday' : 'nextNoneTomorrow'),
+      extra: view.tomorrow.published ? '' : t('tomorrowPending'),
+      line: t(onlyToday ? 'lineNoneToday' : 'lineNone'),
+      event: 'none',
+    };
+  }
+  return { line: '', event: 'none' };
+}
+
+function renderCard(group, view, text) {
+  const c = card(group);
+  c.node.dataset.s = view.status;
+  c.state.textContent = t(
     { off: 'statusOff', on: 'statusOn', unknown: 'statusUnknown' }[view.status],
   );
-  let text = '';
-  let countdown = '';
-  if (next?.type === 'off') {
-    text = t('nextOff', { when: i18n.when(next.at, now) });
-    countdown = i18n.relative(next.at, now);
-  } else if (next?.type === 'on' && next.known) {
-    text = t('nextOn', { when: i18n.when(next.at, now) });
-    countdown = i18n.relative(next.at, now);
-  } else if (next?.type === 'on') {
-    // The outage runs to the end of published data; the real end is not known yet.
-    text = t('nextOnUnknown', { when: '24:00' });
-    countdown = t('atLeast', { duration: i18n.relative(next.at, now) });
-  } else if (next?.type === 'none') {
-    text = t('nextNone', { date: i18n.date(kyivDate(next.until - 1)) });
+  for (const key of ['next', 'extra', 'count']) {
+    c[key].textContent = text[key] ?? '';
+    c[key].hidden = !text[key];
   }
-  card.next.textContent = text;
-  card.countdown.textContent = countdown;
-  card.countdown.hidden = countdown === '';
 }
 
-function renderDay(day, dayView, labelKey, now) {
-  day.heading.textContent = t('dayHeading', { label: t(labelKey), date: i18n.date(dayView.date) });
-  day.timeline.classList.toggle('unpublished', !dayView.published);
-  const start = kyivMidnight(dayView.date);
-  const length = kyivMidnight(kyivDate(start + 36 * 3_600_000)) - start; // 23, 24 or 25 h
-  const pct = (ms) => `${(((ms - start) / length) * 100).toFixed(3)}%`;
-  day.timeline.replaceChildren(
-    ...dayView.intervals.map((iv) =>
-      el('div', {
-        className: 'segment',
-        style: `left:${pct(iv.start)};width:calc(${pct(iv.end)} - ${pct(iv.start)})`,
-      }),
-    ),
+function renderChart(entries, now) {
+  const { today, tomorrow } = entries[0].view;
+  const start = kyivMidnight(today.date);
+  const midnight = kyivMidnight(tomorrow.date);
+  const end = kyivMidnight(nextDate(tomorrow.date));
+  const y = (ms) => ((ms - start) / 60_000) * PX_PER_MINUTE;
+  const px = (n) => `${n.toFixed(1)}px`;
+
+  const side = ({ view }, cls) => {
+    const track = el('div', { className: 'track' });
+    for (const day of [view.today, view.tomorrow]) {
+      const dayStart = kyivMidnight(day.date);
+      const dayEnd = kyivMidnight(nextDate(day.date));
+      if (!day.published) {
+        // Leave the 3 px midnight gap above tomorrow; today starts at the top edge.
+        const inset = dayStart === start ? 0 : 3;
+        track.append(
+          el(
+            'div',
+            {
+              className: 'unpub',
+              style: `top:${px(y(dayStart) + inset)};height:${px(y(dayEnd) - y(dayStart) - inset)}`,
+            },
+            el('strong', { textContent: t('unpublishedDay', { date: i18n.date(day.date) }) }),
+            el('span', { textContent: t('unpublishedHint') }),
+          ),
+        );
+        continue;
+      }
+      for (const iv of day.intervals) {
+        const height = y(iv.end) - y(iv.start);
+        const block = el('div', {
+          className: 'blk',
+          style: `top:${px(y(iv.start))};height:${px(height)}`,
+        });
+        if (height >= MIN_LABEL_PX) {
+          block.append(
+            el('span', {
+              textContent: `${i18n.time(iv.start)}–${i18n.endTime(iv.end, day.date)}`,
+            }),
+            el('small', { textContent: i18n.duration(iv.end - iv.start) }),
+          );
+        }
+        track.append(block);
+      }
+    }
+    track.append(el('div', { className: 'gap', style: `top:${px(y(midnight) - 1)}` }));
+    return el('div', { className: `side ${cls}` }, track);
+  };
+
+  const axis = el('div', { className: 'axis', ariaHidden: 'true' });
+  axis.append(
+    el('span', { className: 'day', textContent: t('axisToday'), style: `top:${px(0)}` }),
+    el('span', {
+      className: 'day',
+      textContent: t('axisTomorrow'),
+      style: `top:${px(y(midnight))}`,
+    }),
   );
-  if (now >= start && now < start + length) {
-    day.timeline.append(el('div', { className: 'now', style: `left:${pct(now)}` }));
-  }
-}
-
-function renderOverview(groups, now) {
-  const date = kyivDate(now);
-  const rows = overview(data, date)?.filter((row) => groups.some((g) => g.id === row.group));
-  const body = $('overview-body');
-  if (!rows) {
-    body.replaceChildren(el('tr', {}, el('td', { colSpan: 2, textContent: t('notPublished') })));
-    return;
-  }
-  body.replaceChildren(
-    ...rows.map(({ group, intervals }) =>
-      el(
-        'tr',
-        {},
-        el('td', { textContent: t(groups.find((g) => g.id === group).labelKey) }),
-        el('td', {
-          textContent:
-            intervals.length === 0
-              ? t('noOutages')
-              : intervals
-                  .map((iv) => `${i18n.time(iv.start)}–${i18n.endTime(iv.end, date)}`)
-                  .join(', '),
+  for (const [day, faded] of [
+    [today, false],
+    [tomorrow, !tomorrow.published],
+  ]) {
+    for (let h = 2; h < 24; h += 2) {
+      axis.append(
+        el('span', {
+          className: faded ? 'faded' : '',
+          textContent: String(h).padStart(2, '0'),
+          style: `top:${px(y(kyivWallInstant(day.date, h * 60)))}`,
         }),
-      ),
-    ),
+      );
+    }
+  }
+
+  const chart = $('chart');
+  chart.style.height = px(y(end));
+  chart.replaceChildren(
+    side(entries[0], 'l'),
+    axis,
+    side(entries[1], 'r'),
+    el('div', { className: 'daysplit', style: `top:${px(y(midnight))}` }),
   );
+  if (now >= start && now < end) {
+    chart.append(
+      el(
+        'div',
+        { className: 'nowline', style: `top:${px(y(now))}` },
+        el('b', { textContent: i18n.time(now) }),
+        ...entries.map(({ text }, i) =>
+          el('em', {
+            className: `${i === 0 ? 'l' : 'r'} ev-${text.event}`,
+            textContent: text.line,
+          }),
+        ),
+      ),
+    );
+  }
 }
 
 function render() {
   if (!data) return;
   const now = Date.now();
   const groups = DISPLAY_GROUPS.filter((g) => data.groups.includes(g.id));
-  if (groups.length === 0) {
-    console.error('None of the display groups are present in the data:', DISPLAY_GROUPS);
+  if (groups.length !== DISPLAY_GROUPS.length) {
+    console.error('Display groups missing from the data:', DISPLAY_GROUPS);
     showState('error');
     return;
   }
 
-  for (const group of groups) {
-    if (!cards.has(group.id)) {
-      const card = createCard(group);
-      cards.set(group.id, card);
-      $('groups').append(card.node);
-    }
-    const card = cards.get(group.id);
+  const entries = groups.map((group) => {
     const view = computeView(data, group.id, now);
-    renderIndicator(card, view);
-    renderDay(card.today, view.today, 'today', now);
-    renderDay(card.tomorrow, view.tomorrow, 'tomorrow', now);
-  }
+    return { group, view, text: describe(view) };
+  });
+  for (const { group, view, text } of entries) renderCard(group, view, text);
+  renderChart(entries, now);
 
   const fetchedAt = Date.parse(data.fetchedAt);
   const stale = now - fetchedAt > STALE_AFTER_MS;
   $('stale').hidden = !stale;
   $('stale').textContent = stale ? t('staleWarning', { ago: i18n.ago(fetchedAt, now) }) : '';
-  renderOverview(groups, now);
   $('meta-source').textContent = data.sourceUpdatedAt
     ? i18n.dateTime(Date.parse(data.sourceUpdatedAt))
     : t('notAvailable');

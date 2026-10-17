@@ -36,7 +36,16 @@ export function kyivMidnight(date) {
   return utcMidnight - offsetMs(utcMidnight - 2 * HOUR);
 }
 
-function nextDate(date) {
+/**
+ * Instant of a Kyiv wall-clock time (minutes since midnight) on `date`. Used to place hour labels;
+ * exact on normal days and within the DST hour on the two transition days.
+ */
+export function kyivWallInstant(date, minutes) {
+  const guess = Date.parse(`${date}T00:00:00Z`) + minutes * 60_000;
+  return guess - offsetMs(guess - offsetMs(guess));
+}
+
+export function nextDate(date) {
   return new Date(Date.parse(`${date}T00:00:00Z`) + 24 * HOUR).toISOString().slice(0, 10);
 }
 
@@ -129,17 +138,4 @@ export function computeView(data, group, now) {
     today: dayView(data, group, today),
     tomorrow: dayView(data, group, nextDate(today)),
   };
-}
-
-/** Per-group interval lists for one date, for the all-groups overview. */
-export function overview(data, date) {
-  const day = data.days.find((d) => d.date === date);
-  if (!day) return null;
-  return data.groups.map((group) => ({
-    group,
-    intervals: (day.groups[group] ?? []).map((iv) => ({
-      start: Date.parse(iv.start),
-      end: Date.parse(iv.end),
-    })),
-  }));
 }

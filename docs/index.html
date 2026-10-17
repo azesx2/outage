@@ -41,8 +41,11 @@
       <div id="content" hidden>
         <p id="stale" class="stale" role="alert" hidden></p>
 
-        <!-- One card per displayed group, built by app.js. -->
-        <div id="groups" class="groups"></div>
+        <div class="board">
+          <!-- Status cards and the 48-hour chart; Квартира left, Будинок right. Built by app.js. -->
+          <div id="heads" class="heads"></div>
+          <div id="chart" class="chart"></div>
+        </div>
 
         <dl class="meta">
           <div>
@@ -54,21 +57,6 @@
             <dd id="meta-checked"></dd>
           </div>
         </dl>
-
-        <section class="card overview" aria-labelledby="overview-title">
-          <h2 id="overview-title" data-i18n="allGroups"></h2>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col" data-i18n="groupColumn"></th>
-                  <th scope="col" data-i18n="outagesColumn"></th>
-                </tr>
-              </thead>
-              <tbody id="overview-body"></tbody>
-            </table>
-          </div>
-        </section>
       </div>
     </main>
 
