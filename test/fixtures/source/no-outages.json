@@ -1,0 +1,46 @@
+{
+  "description": "Every group reads \"Електроенергія є.\" — no outage scheduled, which is different from data unavailable.",
+  "origin": "real: archive item 1045",
+  "now": "2026-03-21T18:00:00+02:00",
+  "responses": {
+    "today": {
+      "@context": "/api/contexts/MenuItems",
+      "@id": "/api/menu_items/238",
+      "@type": "MenuItems",
+      "id": 238,
+      "name": "Today",
+      "slug": "/media/6ad39ab358863_GPV-mobile.png",
+      "orders": 0,
+      "parent": null,
+      "children": [],
+      "menu": "/api/menus/9",
+      "imageUrl": "/media/6ad39ab31c408_GPV.png",
+      "description": "",
+      "rawHtml": "<div><p><b>Графік погодинних відключень на 21.03.2026</b></p>\n<p><b>Інформація станом на 17:29 21.03.2026</b></p>\n<p>Група 1.1. Електроенергія є.</p>\n<p>Група 1.2. Електроенергія є.</p>\n<p>Група 2.1. Електроенергія є.</p>\n<p>Група 2.2. Електроенергія є.</p>\n<p>Група 3.1. Електроенергія є.</p>\n<p>Група 3.2. Електроенергія є.</p>\n<p>Група 4.1. Електроенергія є.</p>\n<p>Група 4.2. Електроенергія є.</p>\n<p>Група 5.1. Електроенергія є.</p>\n<p>Група 5.2. Електроенергія є.</p>\n<p>Група 6.1. Електроенергія є.</p>\n<p>Група 6.2. Електроенергія є.</p>\n</div>",
+      "rawMobileHtml": "<div><p><b>Графік погодинних відключень на 21.03.2026</b></p>\n<p><b>Інформація станом на 17:29 21.03.2026</b></p>\n<p>Група 1.1. Електроенергія є.</p>\n<p>Група 1.2. Електроенергія є.</p>\n<p>Група 2.1. Електроенергія є.</p>\n<p>Група 2.2. Електроенергія є.</p>\n<p>Група 3.1. Електроенергія є.</p>\n<p>Група 3.2. Електроенергія є.</p>\n<p>Група 4.1. Електроенергія є.</p>\n<p>Група 4.2. Електроенергія є.</p>\n<p>Група 5.1. Електроенергія є.</p>\n<p>Група 5.2. Електроенергія є.</p>\n<p>Група 6.1. Електроенергія є.</p>\n<p>Група 6.2. Електроенергія є.</p>\n</div>"
+    },
+    "tomorrow": {
+      "@context": "/api/contexts/MenuItems",
+      "@id": "/api/menu_items/256",
+      "@type": "MenuItems",
+      "id": 256,
+      "name": "Tomorrow",
+      "slug": "",
+      "orders": 1,
+      "parent": null,
+      "children": [],
+      "menu": "/api/menus/9",
+      "imageUrl": "",
+      "description": "",
+      "rawHtml": "",
+      "rawMobileHtml": ""
+    }
+  },
+  "expect": {
+    "result": "accept",
+    "days": [
+      "2026-03-21"
+    ],
+    "allGroupsEmpty": true
+  }
+}
