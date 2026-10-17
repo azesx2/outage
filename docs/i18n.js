@@ -36,14 +36,14 @@ const dictionaries = {
     hours: ({ h }) => `${h} год`,
     hoursMinutes: ({ h, m }) => `${h} год ${m} хв`,
     minutes: ({ m }) => `${m} хв`,
-    sourceUpdated: ({ when }) => `Оновлено ${when}`,
-    lastChecked: ({ when, ago }) => `перевірено ${when} (${ago})`,
-    checkAgree: 'текст і зображення збігаються',
-    checkDisagree: ({ groups }) => `текст ≠ зображення (${groups})`,
-    checkTextOnly: 'текст, зображення не перевірено',
-    checkImageOnly: 'з зображення, текст не прочитано',
-    checkUnavailable: 'графік не опубліковано',
-    checkLegacy: 'порівняння ще немає',
+    sourceUpdated: ({ when }) => `Графік ${when}`,
+    lastChecked: ({ when }) => `перевірка ${when}`,
+    checkAgree: 'текст = фото',
+    checkDisagree: ({ groups }) => `текст ≠ фото (${groups})`,
+    checkTextOnly: 'без фото',
+    checkImageOnly: 'лише фото',
+    checkUnavailable: 'графіка немає',
+    checkLegacy: 'без перевірки',
     notAvailable: 'немає',
     staleWarning: ({ ago }) =>
       `Дані можуть бути застарілими: останню успішну перевірку джерела виконано ${ago}. Перевірте офіційний сайт.`,
@@ -79,6 +79,12 @@ export function createI18n(lang = 'uk') {
     hourCycle: 'h23',
   });
 
+  const shortDateFormat = new Intl.DateTimeFormat(dict.locale, {
+    timeZone: TIME_ZONE,
+    day: '2-digit',
+    month: '2-digit',
+  });
+
   const t = (key, params) => {
     const value = dict[key];
     if (value === undefined) throw new Error(`Missing string: ${key}`);
@@ -93,6 +99,8 @@ export function createI18n(lang = 'uk') {
     endTime: (ms, date) => (kyivDate(ms) > date ? '24:00' : timeFormat.format(ms)),
     date: (isoDate) => dateFormat.format(Date.parse(`${isoDate}T12:00:00Z`)),
     dateTime: (ms) => dateTimeFormat.format(ms),
+    /** "17.10". */
+    shortDate: (ms) => shortDateFormat.format(ms),
     /** "о 20:00", "об 11:00", "завтра о 10:00"; midnight ending today reads "о 24:00". */
     when(ms, now) {
       const today = kyivDate(now);

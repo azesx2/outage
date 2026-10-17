@@ -123,23 +123,21 @@ button {
 }
 
 /* One small line: "Оновлено 18:56 · перевірено 19:17 (5 хв тому) · текст і зображення збігаються". */
-/* Fixed height (one line, two on phones) so the page below never shifts; extra text is clipped. */
+/* Always one line so the page below never shifts; anything that does not fit ends in "…". */
 .statusline {
-  --lines: 1;
   margin: 0 0 12px;
   font-size: 0.8rem;
   line-height: 1.4;
-  height: calc(var(--lines) * 1.4em);
+  white-space: nowrap;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: var(--lines);
-  line-clamp: var(--lines);
+  text-overflow: ellipsis;
   color: var(--muted);
 }
 
 .statusline span + span::before {
   content: ' · ';
+  color: var(--muted);
+  font-weight: 400;
 }
 
 .statusline [data-check='disagree'],
@@ -474,10 +472,6 @@ button {
 }
 
 @media (max-width: 520px) {
-  .statusline {
-    --lines: 2;
-  }
-
   .board {
     padding: 10px;
   }
@@ -505,6 +499,10 @@ button {
 }
 
 @media (max-width: 360px) {
+  .statusline {
+    font-size: 0.75rem;
+  }
+
   .head .state {
     font-size: 0.9rem;
   }

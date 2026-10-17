@@ -125,6 +125,7 @@ test('formats times in Kyiv regardless of the machine time zone', () => {
   assert.equal(i18n.time(at('2026-12-17T17:00:00Z')), '19:00');
   assert.equal(i18n.endTime(at('2026-10-18T00:00:00+03:00'), '2026-10-17'), '24:00');
   assert.equal(i18n.endTime(at('2026-10-17T22:00:00+03:00'), '2026-10-17'), '22:00');
+  assert.equal(i18n.shortDate(at('2026-10-17T18:56:00+03:00')), '17.10');
 });
 
 test('next-event wording: today, 11:00, tomorrow and midnight', () => {
@@ -224,5 +225,5 @@ test('verification summary reports the most serious outcome across published day
       differingGroups: ['1.1', '3.2'],
     },
   );
-  assert.equal(createI18n('uk').t('checkDisagree', { groups: '1.1' }), 'текст ≠ зображення (1.1)');
+  assert.equal(createI18n('uk').t('checkDisagree', { groups: '1.1' }), 'текст ≠ фото (1.1)');
 });

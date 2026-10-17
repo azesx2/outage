@@ -225,9 +225,9 @@ function renderChart(entries, now) {
   }
 }
 
-/** "18:56" for today, "17 жовтня о 18:56" otherwise. */
-function stamp(ms, now) {
-  return kyivDate(ms) === kyivDate(now) ? i18n.time(ms) : i18n.dateTime(ms);
+/** Source time for the one-line status: "18:56" today, just "17.10" for an older publication. */
+function sourceStamp(ms, now) {
+  return kyivDate(ms) === kyivDate(now) ? i18n.time(ms) : i18n.shortDate(ms);
 }
 
 function renderStatusLine(fetchedAt, now) {
@@ -248,15 +248,17 @@ function renderStatusLine(fetchedAt, now) {
     el('span', {
       textContent: t('sourceUpdated', {
         when: data.sourceUpdatedAt
-          ? stamp(Date.parse(data.sourceUpdatedAt), now)
+          ? sourceStamp(Date.parse(data.sourceUpdatedAt), now)
           : t('notAvailable'),
       }),
     }),
     el('span', {
-      textContent: t('lastChecked', { when: stamp(fetchedAt, now), ago: i18n.ago(fetchedAt, now) }),
+      textContent: t('lastChecked', { when: i18n.time(fetchedAt) }),
     }),
     checkNode,
   );
+  // The line may be clipped on narrow screens; the full text stays available on hover.
+  $('statusline').title = $('statusline').textContent;
 }
 
 function render() {
