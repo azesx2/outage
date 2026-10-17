@@ -1,0 +1,85 @@
+name: Update schedule
+
+on:
+  schedule:
+    # Every 30 minutes, off the top of the hour to avoid the busiest cron slots.
+    - cron: '17,47 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# Never run two updates at once; a queued run waits instead of cancelling a deploy mid-way.
+concurrency:
+  group: update-schedule
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  update:
+    name: Fetch, validate and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write # commit docs/data/latest.json when the schedule changes
+    outputs:
+      changed: ${{ steps.update.outputs.changed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run deterministic tests
+        run: npm test
+
+      - name: Fetch and validate source
+        id: update
+        timeout-minutes: 3
+        run: node scripts/update.js
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diagnostics-${{ github.run_id }}
+          path: diagnostics/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Commit changed schedule
+        if: steps.update.outputs.changed == 'true'
+        env:
+          DAYS: ${{ steps.update.outputs.days }}
+          SOURCE_UPDATED: ${{ steps.update.outputs.source-updated }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/data/latest.json
+          git commit -m 'Update schedule data' \
+            -m "$(printf -- '- Days: %s\n- Source updated: %s' "$DAYS" "$SOURCE_UPDATED")"
+          git pull --rebase --autostash
+          git push
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: docs/
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: update
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
