@@ -5,10 +5,12 @@ import { createI18n } from './i18n.js';
 import {
   assertSupported,
   computeView,
+  kyivDate,
   kyivMidnight,
   kyivWallInstant,
   nextDate,
   STALE_AFTER_MS,
+  summarizeVerification,
 } from './schedule.js';
 
 const DATA_URL = 'data/latest.json';
@@ -223,6 +225,40 @@ function renderChart(entries, now) {
   }
 }
 
+/** "18:56" for today, "17 жовтня о 18:56" otherwise. */
+function stamp(ms, now) {
+  return kyivDate(ms) === kyivDate(now) ? i18n.time(ms) : i18n.dateTime(ms);
+}
+
+function renderStatusLine(fetchedAt, now) {
+  const check = summarizeVerification(data.verification);
+  const checkKey = {
+    agree: 'checkAgree',
+    disagree: 'checkDisagree',
+    'text-only': 'checkTextOnly',
+    'image-only': 'checkImageOnly',
+    unavailable: 'checkUnavailable',
+    legacy: 'checkLegacy',
+  }[check.status];
+  const checkNode = el('span', {
+    textContent: t(checkKey, { groups: check.differingGroups.join(', ') }),
+  });
+  checkNode.dataset.check = check.status;
+  $('statusline').replaceChildren(
+    el('span', {
+      textContent: t('sourceUpdated', {
+        when: data.sourceUpdatedAt
+          ? stamp(Date.parse(data.sourceUpdatedAt), now)
+          : t('notAvailable'),
+      }),
+    }),
+    el('span', {
+      textContent: t('lastChecked', { when: stamp(fetchedAt, now), ago: i18n.ago(fetchedAt, now) }),
+    }),
+    checkNode,
+  );
+}
+
 function render() {
   if (!data) return;
   const now = Date.now();
@@ -244,50 +280,7 @@ function render() {
   const stale = now - fetchedAt > STALE_AFTER_MS;
   $('stale').hidden = !stale;
   $('stale').textContent = stale ? t('staleWarning', { ago: i18n.ago(fetchedAt, now) }) : '';
-  $('meta-source').textContent = data.sourceUpdatedAt
-    ? i18n.dateTime(Date.parse(data.sourceUpdatedAt))
-    : t('notAvailable');
-  $('meta-checked').textContent = `${i18n.dateTime(fetchedAt)} (${i18n.ago(fetchedAt, now)})`;
-  const verification = $('verification');
-  verification.replaceChildren(el('h2', { textContent: t('verificationTitle') }));
-  if (!data.verification) {
-    verification.append(el('p', { textContent: t('verificationLegacy') }));
-  }
-  for (const result of data.verification ?? []) {
-    const label = result.date ? i18n.date(result.date) : t(result.item);
-    const source = t(
-      { text: 'sourceText', image: 'sourceImage', none: 'sourceNone' }[result.source],
-    );
-    const status = t(
-      {
-        agree: 'comparisonAgree',
-        disagree: 'comparisonDisagree',
-        'text-only': 'comparisonTextOnly',
-        'image-only': 'comparisonImageOnly',
-        unavailable: 'comparisonUnavailable',
-      }[result.status],
-    );
-    const row = el(
-      'div',
-      { className: 'verification-result' },
-      el('h3', { textContent: label }),
-      el('p', { textContent: `${t('verificationSource', { source })} ${status}` }),
-    );
-    row.dataset.comparison = result.status;
-    if (result.differingGroups.length) {
-      row.append(
-        el('p', {
-          textContent: t('differingGroups', { groups: result.differingGroups.join(', ') }),
-        }),
-      );
-    }
-    if (result.imageUrl?.startsWith('https://api.loe.lviv.ua/media/')) {
-      row.append(
-        el('a', { href: result.imageUrl, rel: 'noopener', textContent: t('viewSourceImage') }),
-      );
-    }
-    verification.append(row);
-  }
+  renderStatusLine(fetchedAt, now);
   showState('content');
 }
 

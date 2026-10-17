@@ -22,10 +22,6 @@
     <script type="module" src="app.js"></script>
   </head>
   <body>
-    <header class="page-header">
-      <h1 data-i18n="title">Графік відключень світла — Львівщина</h1>
-    </header>
-
     <main id="main">
       <p id="loading" class="loading" role="status" data-i18n="loading">Завантаження графіка…</p>
 
@@ -39,26 +35,15 @@
       </section>
 
       <div id="content" hidden>
+        <!-- One line: source update time, last check and the text/image comparison. -->
+        <p id="statusline" class="statusline" aria-live="polite"></p>
         <p id="stale" class="stale" role="alert" hidden></p>
 
+        <!-- Status cards and the 48-hour chart; Квартира left, Будинок right. Built by app.js. -->
+        <div id="heads" class="heads"></div>
         <div class="board">
-          <!-- Status cards and the 48-hour chart; Квартира left, Будинок right. Built by app.js. -->
-          <div id="heads" class="heads"></div>
           <div id="chart" class="chart"></div>
         </div>
-
-        <dl class="meta">
-          <div>
-            <dt data-i18n="sourceUpdated"></dt>
-            <dd id="meta-source"></dd>
-          </div>
-          <div>
-            <dt data-i18n="lastChecked"></dt>
-            <dd id="meta-checked"></dd>
-          </div>
-        </dl>
-
-        <div id="verification" class="card verification" aria-live="polite"></div>
       </div>
     </main>
 

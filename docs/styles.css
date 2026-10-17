@@ -58,7 +58,6 @@ body {
     sans-serif;
 }
 
-.page-header,
 main,
 .page-footer {
   max-width: 860px;
@@ -66,14 +65,8 @@ main,
   padding: 0 16px;
 }
 
-.page-header {
-  padding-top: 24px;
-}
-
-h1 {
-  font-size: 1.5rem;
-  line-height: 1.25;
-  margin: 0 0 4px;
+main {
+  padding-top: 12px;
 }
 
 .page-footer {
@@ -129,8 +122,25 @@ button {
   cursor: pointer;
 }
 
+/* One small line: "Оновлено 18:56 · перевірено 19:17 (5 хв тому) · текст і зображення збігаються". */
+.statusline {
+  margin: 0 0 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.statusline span + span::before {
+  content: ' · ';
+}
+
+.statusline [data-check='disagree'],
+.statusline [data-check='image-only'] {
+  color: var(--warn-text);
+  font-weight: 600;
+}
+
 .stale {
-  margin: 16px 0;
+  margin: 12px 0;
   padding: 12px 16px;
   border-radius: var(--radius);
   background: var(--warn-bg);
@@ -144,7 +154,7 @@ button {
   background: repeating-linear-gradient(135deg, var(--hatch-a) 0 8px, var(--hatch-b) 8px 16px);
 }
 
-/* Board: cards and chart share the same three columns. */
+/* Board: the 48-hour chart. */
 .board {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -153,25 +163,21 @@ button {
   margin: 16px 0;
 }
 
-.heads,
 .chart {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 2.8em minmax(0, 1fr);
   gap: 8px;
 }
 
+/* Status cards above the board: Квартира left, Будинок right. */
 .heads {
-  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
 }
 
-/* Each card sits above its own bar; the middle (axis) column stays empty. */
 .heads .head:first-child {
-  grid-column: 1;
   text-align: right;
-}
-
-.heads .head:last-child {
-  grid-column: 3;
 }
 
 /* Status cards: neutral, only the state word and its dot are coloured. */
@@ -180,7 +186,7 @@ button {
   align-content: start;
   gap: 2px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface);
   min-height: 96px;
@@ -426,23 +432,6 @@ button {
   font-weight: 700;
 }
 
-.meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 32px;
-  margin: 16px 0;
-  font-size: 0.875rem;
-}
-
-.meta dt {
-  color: var(--muted);
-}
-
-.meta dd {
-  margin: 0;
-  font-weight: 600;
-}
-
 .page-footer {
   padding-bottom: 32px;
 }
@@ -450,15 +439,6 @@ button {
 @media (max-width: 520px) {
   .board {
     padding: 10px;
-  }
-
-  /* Cards take the full width on phones; the chart keeps its middle axis. */
-  .heads {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-
-  .heads .head:last-child {
-    grid-column: 2;
   }
 
   .head {
@@ -481,30 +461,4 @@ button {
   .nowline {
     transition: top 0.15s ease;
   }
-}
-/* Source comparison is visible even when the primary text parser succeeds. */
-.verification {
-  margin-bottom: 1rem;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
-  gap: 0 1rem;
-  font-size: 0.875rem;
-}
-.verification h2 {
-  grid-column: 1 / -1;
-}
-.verification h3 {
-  margin: 0.25rem 0;
-  font-size: 1rem;
-}
-.verification-result {
-  padding: 0.5rem 0;
-}
-.verification-result p {
-  margin: 0.4rem 0;
-}
-.verification-result[data-comparison='disagree'],
-.verification-result[data-comparison='image-only'] {
-  border-left: 4px solid var(--now);
-  padding-left: 0.75rem;
 }

@@ -139,3 +139,19 @@ export function computeView(data, group, now) {
     tomorrow: dayView(data, group, nextDate(today)),
   };
 }
+
+/** Most serious comparison outcome first; `unavailable` days are ignored when others exist. */
+const CHECK_ORDER = ['disagree', 'image-only', 'text-only', 'agree'];
+
+/**
+ * Folds the per-day text/image comparison into one outcome for the status line:
+ * `legacy` (snapshot has no comparison), `unavailable` (nothing published) or the most serious
+ * status across published days, with every group that differs.
+ */
+export function summarizeVerification(verification) {
+  if (!Array.isArray(verification)) return { status: 'legacy', differingGroups: [] };
+  const published = verification.filter((r) => r.status !== 'unavailable');
+  const status = CHECK_ORDER.find((s) => published.some((r) => r.status === s)) ?? 'unavailable';
+  const differingGroups = [...new Set(published.flatMap((r) => r.differingGroups ?? []))].sort();
+  return { status, differingGroups };
+}

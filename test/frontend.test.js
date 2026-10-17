@@ -1,7 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createI18n } from '../docs/i18n.js';
-import { assertSupported, computeView, kyivMidnight, kyivWallInstant } from '../docs/schedule.js';
+import {
+  assertSupported,
+  computeView,
+  kyivMidnight,
+  kyivWallInstant,
+  summarizeVerification,
+} from '../docs/schedule.js';
 import { loadJsonDir } from './helpers.js';
 
 const valid = Object.fromEntries(loadJsonDir('output/valid'));
@@ -175,15 +181,16 @@ test('every string used by the page exists', () => {
     'nextNoneToday',
     'nextNoneTomorrow',
     'tomorrowPending',
-    'today',
-    'tomorrow',
     'axisToday',
     'axisTomorrow',
     'lineNoneToday',
     'lineNone',
     'unpublishedHint',
-    'sourceUpdated',
-    'lastChecked',
+    'checkAgree',
+    'checkTextOnly',
+    'checkImageOnly',
+    'checkUnavailable',
+    'checkLegacy',
     'notAvailable',
     'errorTitle',
     'errorBody',
@@ -199,4 +206,23 @@ test('every string used by the page exists', () => {
     i18n.t('unpublishedDay', { date: '18 жовтня' }),
     'Графік на 18 жовтня ще не опубліковано',
   );
+});
+
+test('verification summary reports the most serious outcome across published days', () => {
+  const row = (status, differingGroups = []) => ({ status, differingGroups });
+  assert.deepEqual(summarizeVerification(undefined), { status: 'legacy', differingGroups: [] });
+  assert.equal(
+    summarizeVerification([row('unavailable'), row('unavailable')]).status,
+    'unavailable',
+  );
+  assert.equal(summarizeVerification([row('agree'), row('unavailable')]).status, 'agree');
+  assert.equal(summarizeVerification([row('agree'), row('text-only')]).status, 'text-only');
+  assert.deepEqual(
+    summarizeVerification([row('disagree', ['3.2']), row('disagree', ['1.1', '3.2'])]),
+    {
+      status: 'disagree',
+      differingGroups: ['1.1', '3.2'],
+    },
+  );
+  assert.equal(createI18n('uk').t('checkDisagree', { groups: '1.1' }), 'текст ≠ зображення (1.1)');
 });
