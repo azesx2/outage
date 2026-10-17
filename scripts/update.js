@@ -1,15 +1,23 @@
 #!/usr/bin/env node
-// Fetches the official schedule, validates it and updates docs/data/latest.json.
-// On any failure the published file is left untouched, diagnostics are saved and the exit code is 1.
+// Fetches the official schedule, validates it and writes docs/data/latest.json for deployment.
+// The last-known-good baseline is the snapshot currently published (--previous-url), or the
+// existing --out file for local runs. On any failure nothing is written, diagnostics are saved
+// and the exit code is 1.
 //
-// Usage: node scripts/update.js [--out <path>] [--diagnostics <dir>] [--fixture <source fixture>]
+// Usage: node scripts/update.js [--out <path>] [--previous-url <url>] [--diagnostics <dir>]
+//                               [--fixture <source fixture>]
 
-import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { ValidationError } from '../src/errors.js';
 import { fetchSchedule } from '../src/fetch.js';
-import { assertCanReplace, readPrevious, writeJsonAtomic } from '../src/last-known-good.js';
+import {
+  assertCanReplace,
+  downloadPrevious,
+  readPrevious,
+  writeJsonAtomic,
+} from '../src/last-known-good.js';
 import { buildSnapshot } from '../src/snapshot.js';
 import { ITEMS } from '../src/source.js';
 
@@ -30,11 +38,14 @@ const HINTS = {
     'The source is empty while our data still covers today. The published data was kept; this clears once the source republishes or the day passes.',
   'source-regressed':
     'The source served an older publication than the one already published (cache or rollback). The newer data was kept.',
+  'previous-unavailable':
+    'The published latest.json could not be downloaded, so it could not be protected. Check that GitHub Pages is enabled and reachable.',
 };
 
 const { values: args } = parseArgs({
   options: {
     out: { type: 'string', default: 'docs/data/latest.json' },
+    'previous-url': { type: 'string' },
     diagnostics: { type: 'string', default: 'diagnostics' },
     fixture: { type: 'string' },
   },
@@ -66,14 +77,18 @@ async function saveDiagnostics(error, responses, now) {
   return dir;
 }
 
-async function setOutput(name, value) {
-  if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `${name}=${value}\n`);
-}
-
 async function main() {
   let now = Date.now();
   let responses;
   try {
+    const previousUrl = args['previous-url'];
+    const previous = previousUrl
+      ? await downloadPrevious(previousUrl)
+      : await readPrevious(args.out);
+    console.log(
+      `Baseline: ${previousUrl ?? args.out} (${previous ? `checked ${previous.fetchedAt}` : 'nothing published yet'})`,
+    );
+
     let items = ITEMS;
     if (args.fixture) {
       const fixture = JSON.parse(await readFile(args.fixture, 'utf8'));
@@ -86,15 +101,11 @@ async function main() {
     }
 
     const snapshot = buildSnapshot(responses, now, items);
-    const previous = await readPrevious(args.out);
     assertCanReplace(previous, snapshot, now);
     await writeJsonAtomic(args.out, snapshot);
 
     const changed = content(previous) !== content(snapshot);
     const summary = snapshot.days.map((d) => d.date).join(', ') || 'none published';
-    await setOutput('changed', changed);
-    await setOutput('days', summary);
-    await setOutput('source-updated', snapshot.sourceUpdatedAt ?? 'n/a');
     console.log(
       `OK: wrote ${args.out} (days: ${summary}; source updated ${snapshot.sourceUpdatedAt ?? 'n/a'}; schedule ${changed ? 'changed' : 'unchanged'})`,
     );
@@ -103,7 +114,7 @@ async function main() {
     const reason = error.reason ?? 'internal-error';
     console.error(`::error::${error.message}`);
     if (HINTS[reason]) console.error(`Hint: ${HINTS[reason]}`);
-    console.error(`Published data left unchanged. Diagnostics: ${dir}`);
+    console.error(`Nothing written; published data left unchanged. Diagnostics: ${dir}`);
     process.exitCode = 1;
   }
 }

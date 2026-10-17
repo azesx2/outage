@@ -24,6 +24,7 @@ export const REASONS = [
   // Last-known-good protection
   'empty-would-overwrite',
   'source-regressed',
+  'previous-unavailable',
 ];
 
 /** A source or snapshot problem that must stop publication. `reason` is a stable machine code. */

@@ -11,15 +11,16 @@ An unofficial static page that shows the current hourly electricity-outage sched
 
 ```
 GitHub Actions (cron :17 and :47, manual run, push to main)
-  │  GET api.loe.lviv.ua/api/menu_items/238  (Today)
-  │  GET api.loe.lviv.ua/api/menu_items/256  (Tomorrow)
+  │  GET <pages-site>/data/latest.json          (published snapshot = last-known-good baseline)
+  │  GET api.loe.lviv.ua/api/menu_items/238     (Today)
+  │  GET api.loe.lviv.ua/api/menu_items/256     (Tomorrow)
   ▼
 parse rawHtml text → validate (schema + plausibility + last-known-good) → docs/data/latest.json
   │                                    │
   │                                    └─ any failure: run fails, nothing is deployed,
   │                                       diagnostics uploaded as an artifact
   ▼
-commit latest.json if the schedule changed → deploy docs/ to GitHub Pages
+deploy docs/ to GitHub Pages (data is never committed)
 ```
 
 Visitors only download static files from GitHub Pages. They never contact the source.
@@ -37,10 +38,13 @@ Visitors only download static files from GitHub Pages. They never contact the so
   - schedule date within ±1 day of Kyiv today;
   - "станом на" not in the future;
   - the result must match [schema/latest.schema.json](schema/latest.schema.json).
-- **Last-known-good** ([src/last-known-good.js](src/last-known-good.js)):
+- **Last-known-good** ([src/last-known-good.js](src/last-known-good.js)): the baseline is the
+  snapshot currently live on GitHub Pages, downloaded at the start of each run.
   - an empty source never replaces data that still covers today;
   - an older publication never replaces a newer one;
-  - files are written atomically.
+  - a 404 means nothing is published yet; any other download failure stops the run, so protection
+    is never skipped silently.
+- **No data commits:** `docs/data/` is ignored by git. The repository history only contains code.
 - **Time** ([src/kyiv-time.js](src/kyiv-time.js)):
   - source times are Europe/Kyiv wall-clock times;
   - output intervals carry explicit offsets (`+02:00` or `+03:00`);
@@ -97,7 +101,7 @@ Visitors only download static files from GitHub Pages. They never contact the so
 | `src/`               | Pipeline: fetch, parse, validate, time conversion, last-known-good     |
 | `scripts/update.js`  | Pipeline entry point used by the workflow                              |
 | `scripts/serve.js`   | Local static server for previewing `docs/`                             |
-| `docs/`              | The published site; `docs/data/latest.json` is generated               |
+| `docs/`              | The published site; `docs/data/` is generated and not committed        |
 | `schema/`            | JSON Schema for the published data                                     |
 | `test/`              | Deterministic tests with committed [fixtures](test/fixtures/README.md) |
 | `live/`              | Live-source check (network), run separately                            |
@@ -128,18 +132,18 @@ saves the raw responses to `diagnostics/live-responses.json` and reports the val
 ## GitHub setup
 
 1. **Make the repository public.** Free GitHub Pages requires it, unless you are on a paid plan.
-2. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
+2. **Settings → Pages → Build and deployment → Source: GitHub Actions.** Do this before the first
+   push: each run looks up the site URL to download the published baseline and fails without it.
 3. **Settings → Actions → General:**
    - "Allow all actions" or allow `actions/*`.
    - The workflow token's default permission can stay "Read repository contents". The workflow
      grants itself only what it needs per job:
-     - `update` job: `contents: write`, to commit `docs/data/latest.json`;
-     - `deploy` job: `pages: write` and `id-token: write`.
-4. **Branch protection on `main`** (if any) must let `github-actions[bot]` push. Otherwise the data
-   commit fails while deployment still works.
-5. Push to `main`. The workflow runs on the push, then at minutes 17 and 47 of every hour.
+     - `update` job: `contents: read` and `pages: read` (to find the site URL);
+     - `deploy` job: `pages: write` and `id-token: write`;
+     - `keepalive` job: `actions: write` (see below).
+4. Push to `main`. The workflow runs on the push, then at minutes 17 and 47 of every hour.
    Scheduled runs only happen on the default branch.
-6. The site is published at `https://<user>.github.io/<repo>/`.
+5. The site is published at `https://<user>.github.io/<repo>/`.
 
 The workflow is [.github/workflows/update.yml](.github/workflows/update.yml):
 
@@ -148,7 +152,10 @@ The workflow is [.github/workflows/update.yml](.github/workflows/update.yml):
 - concurrency allows one run at a time;
 - the job has a 10-minute timeout and the fetch step 3 minutes;
 - HTTP requests retry twice on network errors, 429 and 5xx;
-- npm downloads are cached.
+- npm downloads are cached;
+- the `keepalive` job re-enables the workflow through the API on scheduled runs. GitHub disables
+  scheduled workflows after 60 days without repository activity, and this project makes no data
+  commits.
 
 ## Operations runbook
 
@@ -160,7 +167,8 @@ The workflow is [.github/workflows/update.yml](.github/workflows/update.yml):
 | `[item-identity-mismatch]` or warning "Update ITEMS" | The Today/Tomorrow item IDs moved. Find the new IDs in the warning and update `ITEMS` in `src/source.js`.                                                                                                                                                   |
 | `[empty-would-overwrite]`                            | The source is temporarily empty. Published data is kept and this clears once the source republishes or the day passes.                                                                                                                                      |
 | `[source-regressed]`                                 | The source served an older publication. Published data is kept and this usually clears on the next run.                                                                                                                                                     |
-| Workflow stopped running on schedule                 | GitHub disables scheduled workflows after 60 days without repository activity, for example during an outage-free period. Re-enable it under **Actions → Update schedule → Enable workflow**.                                                                |
+| `[previous-unavailable]`                             | The published `latest.json` could not be downloaded. Check that GitHub Pages is enabled and the site loads. The run stops rather than publishing without protection.                                                                                        |
+| Workflow stopped running on schedule                 | The `keepalive` job should prevent this. If GitHub still disabled it, re-enable it under **Actions → Update schedule → Enable workflow** and check the `keepalive` job's log.                                                                               |
 | Need fresh data now                                  | **Actions → Update schedule → Run workflow.**                                                                                                                                                                                                               |
 
 Reason codes are listed in [src/errors.js](src/errors.js).

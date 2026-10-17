@@ -19,7 +19,8 @@ coverage/
 *.lcov
 
 # --- Pipeline output that must not be committed ---
-# Diagnostics are uploaded as GitHub Actions artifacts on failed runs instead.
+# Data is deployed to GitHub Pages and diagnostics are uploaded as Actions artifacts instead.
+docs/data/
 diagnostics/
 screenshots/
 tmp/

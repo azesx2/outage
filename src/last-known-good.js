@@ -3,10 +3,21 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { ValidationError } from './errors.js';
+import { fetchJson } from './fetch.js';
 import { kyivDate } from './kyiv-time.js';
 import { assertSchema } from './snapshot.js';
 
-/** Reads the currently published snapshot; returns null if absent or invalid. */
+/** Returns the value if it is a valid snapshot, otherwise null: an invalid file is never worth protecting. */
+function validOrNull(value) {
+  try {
+    assertSchema(value);
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+/** Reads a local snapshot; returns null if absent or invalid. */
 export async function readPrevious(path) {
   let text;
   try {
@@ -16,11 +27,26 @@ export async function readPrevious(path) {
     throw err;
   }
   try {
-    const snapshot = JSON.parse(text);
-    assertSchema(snapshot);
-    return snapshot;
+    return validOrNull(JSON.parse(text));
   } catch {
-    return null; // A broken previous file is never worth protecting.
+    return null;
+  }
+}
+
+/**
+ * Downloads the snapshot currently published on GitHub Pages.
+ * Returns null when nothing is published yet (404) or the file is invalid. Any other failure throws,
+ * so the last-known-good protection is never skipped silently.
+ */
+export async function downloadPrevious(url, options) {
+  const busted = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`; // bypass the Pages CDN cache
+  try {
+    return validOrNull(await fetchJson(busted, { ...options, allowNotFound: true }));
+  } catch (error) {
+    throw new ValidationError(
+      'previous-unavailable',
+      `Could not download the published snapshot ${url}: ${error.message}`,
+    );
   }
 }
 

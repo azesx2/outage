@@ -13,8 +13,14 @@ const userAgent = () =>
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const isRetryable = (status) => status === 429 || status >= 500;
 
-/** GETs JSON with a per-attempt timeout; retries network errors, 429 and 5xx only. */
-export async function fetchJson(url, { fetchImpl = fetch, delays = RETRY_DELAYS_MS } = {}) {
+/**
+ * GETs JSON with a per-attempt timeout; retries network errors, 429 and 5xx only.
+ * With `allowNotFound`, a 404 returns null instead of failing.
+ */
+export async function fetchJson(
+  url,
+  { fetchImpl = fetch, delays = RETRY_DELAYS_MS, allowNotFound = false } = {},
+) {
   let lastError;
   for (let attempt = 0; attempt <= delays.length; attempt++) {
     if (attempt > 0) await sleep(delays[attempt - 1]);
@@ -28,6 +34,7 @@ export async function fetchJson(url, { fetchImpl = fetch, delays = RETRY_DELAYS_
       lastError = `${err.name}: ${err.message}`;
       continue;
     }
+    if (res.status === 404 && allowNotFound) return null;
     if (!res.ok) {
       lastError = `HTTP ${res.status} ${res.statusText}`;
       if (isRetryable(res.status)) continue;
