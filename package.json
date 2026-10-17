@@ -15,7 +15,8 @@
     "test": "node --test \"test/**/*.test.js\"",
     "test:live": "node --test \"live/**/*.test.js\"",
     "update": "node scripts/update.js",
-    "check": "npm run lint && npm run format:check && npm test"
+    "check": "npm run lint && npm run format:check && npm test",
+    "serve": "node scripts/serve.js"
   },
   "dependencies": {
     "ajv": "^8.20.0",

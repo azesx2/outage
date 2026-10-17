@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      name="description"
+      content="Неофіційне відображення графіка погодинних відключень світла Львівобленерго за групами."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <title>Графік відключень світла — Львівщина</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M9 1 3 9h4l-1 6 6-8H8z' fill='%23f5a524'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <header class="page-header">
+      <h1 data-i18n="title">Графік відключень світла — Львівщина</h1>
+      <p class="disclaimer" data-i18n="disclaimer"></p>
+    </header>
+
+    <main id="main">
+      <p id="loading" class="loading" role="status" data-i18n="loading">Завантаження графіка…</p>
+
+      <section id="error" class="card error" hidden aria-labelledby="error-title">
+        <h2 id="error-title" data-i18n="errorTitle"></h2>
+        <p data-i18n="errorBody"></p>
+        <p class="actions">
+          <button type="button" id="retry" data-i18n="retry"></button>
+          <a href="https://poweron.loe.lviv.ua/" rel="noopener" data-i18n="officialSource"></a>
+        </p>
+      </section>
+
+      <div id="content" hidden>
+        <p id="stale" class="stale" role="alert" hidden></p>
+
+        <fieldset class="groups">
+          <legend data-i18n="groupLegend"></legend>
+          <div id="group-options" class="group-options"></div>
+        </fieldset>
+
+        <section id="status" class="card status">
+          <p class="status-group" id="status-group"></p>
+          <p class="status-label" id="status-label" aria-live="polite"></p>
+          <p class="status-next" id="status-next"></p>
+        </section>
+
+        <div class="days">
+          <section class="card day" id="day-today" aria-labelledby="day-today-title">
+            <h2 id="day-today-title"></h2>
+            <div class="timeline" aria-hidden="true"></div>
+            <ul class="intervals"></ul>
+          </section>
+          <section class="card day" id="day-tomorrow" aria-labelledby="day-tomorrow-title">
+            <h2 id="day-tomorrow-title"></h2>
+            <div class="timeline" aria-hidden="true"></div>
+            <ul class="intervals"></ul>
+          </section>
+        </div>
+
+        <dl class="meta">
+          <div>
+            <dt data-i18n="sourceUpdated"></dt>
+            <dd id="meta-source"></dd>
+          </div>
+          <div>
+            <dt data-i18n="lastChecked"></dt>
+            <dd id="meta-checked"></dd>
+          </div>
+        </dl>
+
+        <section class="card overview" aria-labelledby="overview-title">
+          <h2 id="overview-title" data-i18n="allGroups"></h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="groupColumn"></th>
+                  <th scope="col" data-i18n="outagesColumn"></th>
+                </tr>
+              </thead>
+              <tbody id="overview-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="page-footer">
+      <p>
+        <a href="https://poweron.loe.lviv.ua/" rel="noopener" data-i18n="officialSource"></a>
+      </p>
+      <p>
+        <span data-i18n="timezoneNote"></span> <a href="data/latest.json" data-i18n="rawData"></a>
+      </p>
+    </footer>
+  </body>
+</html>
