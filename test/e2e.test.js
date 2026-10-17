@@ -84,7 +84,12 @@ test('the published snapshot from Pages protects against an empty source', async
   try {
     const dir = await mkdtemp(join(tmpdir(), 'e2e-'));
     const live = JSON.parse(await readFile(sourceFixture('normal-live-2026-10-17'), 'utf8'));
-    live.responses.today = { ...live.responses.today, rawHtml: '', rawMobileHtml: '' };
+    live.responses.today = {
+      ...live.responses.today,
+      rawHtml: '',
+      rawMobileHtml: '',
+      imageUrl: '',
+    };
     const emptyFixture = join(dir, 'empty-source.json');
     await writeFile(emptyFixture, JSON.stringify(live));
 
@@ -128,4 +133,29 @@ test('a broken source leaves the existing file untouched and saves diagnostics',
   assert.deepEqual(files.sort(), ['error.json', 'response-today.json', 'response-tomorrow.json']);
   const error = JSON.parse(await readFile(join(dir, 'diagnostics', run, 'error.json'), 'utf8'));
   assert.equal(error.reason, 'unknown-line');
+});
+
+test('image fallback publishes through the update command and retains regression protection', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'e2e-image-'));
+  const fixture = JSON.parse(await readFile(sourceFixture('normal-live-2026-10-17'), 'utf8'));
+  fixture.imageResponses = structuredClone(fixture.responses);
+  fixture.responses.today.rawHtml = 'Changed wording';
+  const fixturePath = join(dir, 'image-source.json');
+  await writeFile(fixturePath, JSON.stringify(fixture));
+  const result = await update(dir, fixturePath);
+  assert.equal(result.code, 0, result.stderr);
+  const data = JSON.parse(await readFile(join(dir, 'latest.json'), 'utf8'));
+  assert.equal(data.verification[0].source, 'image');
+  assert.equal(data.verification[0].status, 'image-only');
+  assert.equal(computeView(data, '1.1', Date.parse('2026-10-17T20:30:00+03:00')).status, 'off');
+
+  fixture.imageResponses.today.rawHtml = fixture.imageResponses.today.rawHtml.replace(
+    '18:56',
+    '18:55',
+  );
+  await writeFile(fixturePath, JSON.stringify(fixture));
+  const regressed = await update(dir, fixturePath);
+  assert.equal(regressed.code, 1);
+  assert.match(regressed.stderr, /source-regressed/);
+  assert.deepEqual(JSON.parse(await readFile(join(dir, 'latest.json'), 'utf8')), data);
 });

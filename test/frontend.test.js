@@ -175,6 +175,8 @@ test('every string used by the page exists', () => {
     'nextNoneToday',
     'nextNoneTomorrow',
     'tomorrowPending',
+    'today',
+    'tomorrow',
     'axisToday',
     'axisTomorrow',
     'lineNoneToday',

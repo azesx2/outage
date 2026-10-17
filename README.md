@@ -1,5 +1,39 @@
 # Графік відключень Львівобленерго (неофіційний)
 
+## Image fallback and comparison
+
+Each update also downloads the `imageUrl` from each official Today/Tomorrow API item.
+The image reader uses Pillow and Ukrainian Tesseract OCR to read the current twelve-card
+visualization. It reads group labels, explicit time ranges,
+the schedule date and publication timestamp independently of `rawHtml`. The old
+colored hourly-grid format is not supported.
+
+Valid text remains primary. When text parsing fails, a complete, independently validated
+image schedule is used for that publication. Both paths retain the existing group, time,
+date, schema and last-known-good checks. If neither succeeds, no replacement is published.
+An empty image/card is never treated as an all-clear; that requires an explicit status.
+
+The page always shows the source used and whether the representations agree. Agreement
+requires all twelve groups, schedule date and publication timestamp to match. A mismatch
+keeps valid text and displays a warning; unavailable OCR is labeled unverified. The optional
+`verification` array in schema version 1 records these outcomes and parser errors; older
+snapshots display an unavailable-comparison message until the next update. Agreement checks
+published representations, not actual electricity availability.
+
+The existing Actions workflow installs Tesseract and Pillow and runs both parsers in the
+same update. For local updates, install `tesseract` with Ukrainian language data and run:
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-image.txt
+PYTHON=.venv/bin/python npm run update
+.venv/bin/python -m unittest discover -s test -p '*_test.py'
+```
+
+Without image dependencies, valid text still publishes with an unverified-image status.
+Fixture runs do not access the network; optional `imageResponses` provide OCR results for
+fallback integration tests. The checked-in PNG is an official source capture for OCR regression.
+
 An unofficial static page that shows the current hourly electricity-outage schedule (графік
 погодинних відключень) published by Львівобленерго at <https://poweron.loe.lviv.ua/>.
 
@@ -15,7 +49,7 @@ GitHub Actions (cron :17 and :47, manual run, push to main)
   │  GET api.loe.lviv.ua/api/menu_items/238     (Today)
   │  GET api.loe.lviv.ua/api/menu_items/256     (Tomorrow)
   ▼
-parse rawHtml text → validate (schema + plausibility + last-known-good) → docs/data/latest.json
+parse text + image → compare, select text or image fallback → validate → docs/data/latest.json
   │                                    │
   │                                    └─ any failure: run fails, nothing is deployed,
   │                                       diagnostics uploaded as an artifact
@@ -28,10 +62,10 @@ Visitors only download static files from GitHub Pages. They never contact the so
 - **Source:** the official site is a React app backed by a public JSON API. Each schedule item has
   a `rawHtml` field with one line per group, for example
   `Група 1.1. Електроенергії немає з 20:00 до 22:00.` The PNG on the site is drawn from the same
-  data, so there is no browser, no OCR and no LLM. See
+  data. The primary parser reads text; the secondary parser independently OCRs that PNG. See
   [ADR 0001](adr/0001-data-source-and-extraction.md) for the investigation and alternatives.
-- **Extraction** ([src/parse.js](src/parse.js)): strict line patterns. Any unrecognised line fails
-  the run, which is how layout changes are detected.
+- **Extraction** ([src/parse.js](src/parse.js)): strict line patterns. An unrecognised line fails
+  text parsing and triggers the validated image fallback. A run fails if neither parser succeeds.
 - **Validation** ([src/snapshot.js](src/snapshot.js)):
   - exactly the 12 known groups (1.1–6.2), each once;
   - times on a 30-minute grid, `start < end`, no overlaps, at most 8 intervals per group;
