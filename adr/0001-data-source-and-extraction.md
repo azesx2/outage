@@ -1,6 +1,6 @@
 # ADR 0001 — Data source and extraction strategy
 
-- Status: proposed (Stage 0)
+- Status: accepted and implemented (Stage 5)
 - Date: 2026-10-17
 
 ## Context
@@ -86,8 +86,9 @@ Conclusion: the `rawHtml` field of the `photo-grafic` menu items is the most str
 
 - `robots.txt`: `User-agent: * / Disallow:` (everything allowed).
 - I found no terms of use for the API. The page carries ads and analytics, which we won't load.
-- Planned load is 2 requests of ~3 KB every 30 minutes (Today and Tomorrow items), using
-  `If-None-Match` with the returned ETags where supported. That is far below what one visitor's browser makes when it opens the site.
+- Load is 2 requests of ~3 KB every 30 minutes (Today and Tomorrow items), identified by a
+  `User-Agent` naming this project. That is far below what one visitor's browser makes when it opens the site.
+  (Conditional requests with ETags were considered and skipped: at 3 KB they would save almost nothing.)
 
 ### Existing project: aliend/loe-poweroff
 
@@ -103,19 +104,21 @@ Conclusion: the `rawHtml` field of the `photo-grafic` menu items is the most str
 1. **Extraction method: structured JSON (tier 1), with text parsing of an embedded HTML field.**
    - Fetch `menu_items/238` and `menu_items/256` with Node's built-in `fetch`, a timeout, and limited retries.
    - Verify the identity of each item (`name` is `Today` or `Tomorrow`, `menu` is `/api/menus/9`). If the IDs ever change, fall back once to the menu endpoint to find the items by name. If that also fails, stop with a clear error.
-   - Parse `rawHtml` with a small HTML-to-text step (Cheerio or `node-html-parser`) and strict, anchored regular expressions. Any line that matches no known pattern fails the run (layout-change detection). It is never silently skipped.
+   - Parse `rawHtml` with a small built-in HTML-to-text step (the markup is only `<div>`, `<p>` and `<b>`, so no parser dependency) and strict, anchored regular expressions. Any line that matches no known pattern fails the run (layout-change detection). It is never silently skipped.
    - The schedule date always comes from the text (`на DD.MM.YYYY`), **never** from the item name. "Today" may still hold yesterday's schedule shortly after midnight.
 2. **No browser, no OCR, no LLM.** The PNG is a rendering of the same data and is not used. It may be linked as the official visual reference. We don't need Puppeteer or Playwright at all.
 3. **Validation (any failure means the previous `latest.json` is kept and the run fails):**
    - the group set equals exactly `1.1…6.2`, each group appears once;
    - times are `HH:MM` on a 30-minute grid, `00:00 ≤ start < end ≤ 24:00`, no overlaps (touching intervals are merged);
-   - the schedule date is within [Kyiv today − 1, Kyiv today + 1], and "станом на" is not in the future (with a small skew allowance) and not more than ~2 days old;
+   - the schedule date is within [Kyiv today − 1, Kyiv today + 1], and "станом на" is not more than 10 minutes in the future;
    - reject degenerate publications such as the all-`00:00–00:00` one;
    - empty Today means "unavailable", never "no outages". Only an explicit `Електроенергія є` means no outages.
 4. **Time handling:** source times are Europe/Kyiv wall-clock times. We convert to ISO-8601 with the correct offset for each instant (`+03:00` in summer, `+02:00` in winter), and `24:00` becomes `00:00` of the next day. DST rules follow the `compatible` disambiguation used by `Temporal`. On the fall-back day (2026-10-25, 03:00–04:00 occurs twice), an ambiguous wall-clock time resolves to the **earlier** instant. On the spring-forward day (2027-03-28, 03:00–04:00 does not exist), a nonexistent time moves **forward** by the gap, so 03:00 becomes 04:00+03:00. If that makes an interval empty or reversed, the interval is rejected. Both days are covered by synthetic fixtures.
-5. **Runtime:** Node.js 24 LTS (local machine has 26). Dependencies: one HTML parser plus dev tools. Tests use the built-in `node:test`.
+5. **Runtime:** Node.js 24 LTS. The only runtime dependency is Ajv (schema validation). Tests use the built-in `node:test`.
+6. **Last-known-good protection:** a valid snapshot still does not replace the published one when the source turns empty while published data covers today, or when a date's "станом на" goes backwards.
+7. **Data persistence (Stage 5):** every successful run deploys `docs/` to GitHub Pages, so `fetchedAt` stays fresh. `docs/data/latest.json` is committed only when the schedule content changes. That gives a small history, counts as repository activity, and gives the next run its last-known-good baseline. On failure nothing is deployed, so the page shows the stale warning.
 
-## Proposed schema (`docs/data/latest.json`, version 1)
+## Schema (`docs/data/latest.json`, version 1)
 
 I changed the suggested schema in one way: data is grouped **by day**. The source publishes each day separately, each with its own "станом на" time, and Tomorrow may be absent while Today is present. A single flat `groups` map couldn't tell "tomorrow not published yet" apart from "no outages tomorrow".
 
@@ -157,16 +160,16 @@ Semantics:
 
 ## Risks
 
-| Risk                                                                                               | Mitigation                                                                                                                                  |
-| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Wording or markup change on the source                                                             | Strict line grammar: unknown lines fail the run, last-known-good is kept, diagnostics (raw JSON) are uploaded as an Actions artifact        |
-| Item IDs 238/256 change                                                                            | Identity check plus fallback discovery via the menu endpoint                                                                                |
-| Malformed publications (seen in the wild)                                                          | Plausibility validation and a fixture from item 540                                                                                         |
-| Cloudflare starts challenging runners                                                              | Currently reachable (evidence from aliend). On failure, keep stale data and show a clear warning. Do not add workarounds                    |
-| GitHub cron delays and skipped runs (often 5–20 minutes, sometimes more)                           | Minutes 17/47, stale threshold accounts for delays, manual `workflow_dispatch`                                                              |
-| **Scheduled workflows are auto-disabled after 60 days without repository activity** (public repos) | Decide in Stage 5: commit `latest.json` when it changes, and/or a lightweight keepalive. Outage-free summers could otherwise exceed 60 days |
-| DST transitions (next one: 2026-10-25)                                                             | Offsets computed per instant, synthetic DST fixtures                                                                                        |
-| "Today" lags after midnight                                                                        | Date taken from the text, and the frontend shows "no data for today" rather than yesterday's schedule                                       |
+| Risk                                                                                               | Mitigation                                                                                                                                                                        |
+| -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wording or markup change on the source                                                             | Strict line grammar: unknown lines fail the run, last-known-good is kept, diagnostics (raw JSON) are uploaded as an Actions artifact                                              |
+| Item IDs 238/256 change                                                                            | Identity check plus fallback discovery via the menu endpoint                                                                                                                      |
+| Malformed publications (seen in the wild)                                                          | Plausibility validation and a fixture from item 540                                                                                                                               |
+| Cloudflare starts challenging runners                                                              | Currently reachable (evidence from aliend). On failure, keep stale data and show a clear warning. Do not add workarounds                                                          |
+| GitHub cron delays and skipped runs (often 5–20 minutes, sometimes more)                           | Minutes 17/47, stale threshold accounts for delays, manual `workflow_dispatch`                                                                                                    |
+| **Scheduled workflows are auto-disabled after 60 days without repository activity** (public repos) | Commit `latest.json` whenever the schedule changes. If an outage-free period lasts over 60 days, GitHub emails a warning and the workflow must be re-enabled (see README runbook) |
+| DST transitions (next one: 2026-10-25)                                                             | Offsets computed per instant, synthetic DST fixtures                                                                                                                              |
+| "Today" lags after midnight                                                                        | Date taken from the text, and the frontend shows "no data for today" rather than yesterday's schedule                                                                             |
 
 ## Out of scope
 
