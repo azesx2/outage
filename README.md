@@ -155,8 +155,26 @@ npm ci
 npm run check        # lint + format check + deterministic tests
 npm run test:live    # contacts the official API once and validates the live data
 npm run update       # fetch the live source into docs/data/latest.json
+npm run stub         # generate offline preview data for Kyiv today and tomorrow
 npm run serve        # preview docs/ at http://localhost:8080/
 ```
+
+`npm run stub` writes synthetic data to `docs/data/latest.json`, replacing any local live
+snapshot. It needs no network, Python, Tesseract or credentials. The output is ignored by git;
+do not publish it as a real schedule. Run `npm run update` to restore live data.
+
+The default scenario simulates text/image agreement. Preview other states with:
+
+```sh
+npm run stub -- --scenario fallback
+npm run stub -- --scenario disagree
+npm run stub -- --scenario unverified
+npm run stub -- --scenario unpublished
+```
+
+Optional `--now 2026-10-18T12:00:00+03:00` fixes the preview clock used to generate dates and
+timestamps (the page still uses your actual clock). `--out /tmp/latest.json` writes elsewhere.
+Agreement statuses in stub data are simulated using the real comparison pipeline, without OCR.
 
 Test the pipeline against a fixture without the network:
 
