@@ -1,0 +1,39 @@
+# --- Node.js / npm ---
+node_modules/
+.npm/
+*.tgz
+npm-debug.log*
+.node_repl_history
+
+# --- Secrets (keep API keys in GitHub Actions Secrets only) ---
+.env
+.env.*
+!.env.example
+
+# --- Tooling caches ---
+.eslintcache
+.prettiercache
+
+# --- Test coverage (node --test --experimental-test-coverage, c8) ---
+coverage/
+*.lcov
+
+# --- Pipeline output that must not be committed ---
+# Diagnostics are uploaded as GitHub Actions artifacts on failed runs instead.
+diagnostics/
+screenshots/
+tmp/
+*.log
+
+# --- Editors ---
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+Desktop.ini
