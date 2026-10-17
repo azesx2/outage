@@ -123,9 +123,18 @@ button {
 }
 
 /* One small line: "Оновлено 18:56 · перевірено 19:17 (5 хв тому) · текст і зображення збігаються". */
+/* Fixed height (one line, two on phones) so the page below never shifts; extra text is clipped. */
 .statusline {
+  --lines: 1;
   margin: 0 0 12px;
   font-size: 0.8rem;
+  line-height: 1.4;
+  height: calc(var(--lines) * 1.4em);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--lines);
+  line-clamp: var(--lines);
   color: var(--muted);
 }
 
@@ -165,7 +174,7 @@ button {
 
 .chart {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 2.8em minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 2.8rem minmax(0, 1fr);
   gap: 8px;
 }
 
@@ -180,8 +189,12 @@ button {
   text-align: right;
 }
 
-/* Status cards: neutral, only the state word and its dot are coloured. */
+/* Status cards: neutral, only the state word and its dot are coloured. Every card has the same
+   fixed rows (name, state, two lines of next event, one note line) so its size never changes;
+   longer text is clipped with an ellipsis. */
 .head {
+  --row: 1.35em;
+  --sub-lines: 1;
   display: grid;
   align-content: start;
   gap: 2px;
@@ -189,11 +202,18 @@ button {
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--surface);
-  min-height: 96px;
 }
 
-.head p {
+.head p,
+.head .name {
   margin: 0;
+  overflow: hidden;
+}
+
+.head .name,
+.head .state {
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .head .name {
@@ -202,7 +222,6 @@ button {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
-  margin: 0;
 }
 
 .head .state {
@@ -233,15 +252,32 @@ button {
   background: var(--dark);
 }
 
-.head .next {
+.head .next,
+.head .sub {
   font-size: 0.875rem;
+  line-height: var(--row);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
 }
 
-.head .count {
+.head .next {
+  height: calc(2 * var(--row));
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.head .sub {
+  height: calc(var(--sub-lines) * var(--row));
+  -webkit-line-clamp: var(--sub-lines);
+  line-clamp: var(--sub-lines);
+  color: var(--muted);
+}
+
+.head .sub.count {
   font-family: var(--font-num);
   font-weight: 700;
-  font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
+  color: var(--text);
 }
 
 /* Chart */
@@ -395,8 +431,9 @@ button {
 .nowline em {
   position: absolute;
   top: 4px;
-  /* Never wider than its own bar; long labels wrap instead of being cut. */
-  max-width: calc((100% - 2.8em) / 2 - 8px);
+  /* Stays 4px inside its own bar: bar width = (chart - 2.8rem axis - two 8px gaps) / 2.
+     rem, not em: this label's font is smaller than the chart's. Long labels wrap. */
+  max-width: calc((100% - 2.8rem - 16px) / 2 - 8px);
   font-style: normal;
   font-family: var(--font-num);
   font-size: 0.68rem;
@@ -412,11 +449,11 @@ button {
 }
 
 .nowline em.l {
-  left: 0;
+  left: 4px;
 }
 
 .nowline em.r {
-  right: 0;
+  right: 4px;
 }
 
 .nowline em.ev-on {
@@ -437,23 +474,39 @@ button {
 }
 
 @media (max-width: 520px) {
+  .statusline {
+    --lines: 2;
+  }
+
   .board {
     padding: 10px;
   }
 
+  /* Narrow cards: the note gets a second line ("щонайменше через 2 год 30 хв"). */
   .head {
+    --sub-lines: 2;
     padding: 8px;
-    min-height: 112px;
   }
 
   .head .state {
     font-size: 1.02rem;
   }
 
+  .head .next,
+  .head .sub {
+    font-size: 0.8rem;
+  }
+
   .blk {
     font-size: 0.64rem;
     padding: 0 5px;
     gap: 3px;
+  }
+}
+
+@media (max-width: 360px) {
+  .head .state {
+    font-size: 0.9rem;
   }
 }
 

@@ -56,18 +56,17 @@ function card({ id, labelKey }) {
   if (!cards.has(id)) {
     const state = el('p', { className: 'state', ariaLive: 'polite' });
     const next = el('p', { className: 'next' });
-    const extra = el('p', { className: 'next' });
-    const count = el('p', { className: 'count' });
+    // Countdown or a secondary note; always present so every card keeps the same rows.
+    const sub = el('p', { className: 'sub' });
     const node = el(
       'section',
       { className: 'head' },
       el('h2', { className: 'name', textContent: t(labelKey) }),
       state,
       next,
-      extra,
-      count,
+      sub,
     );
-    cards.set(id, { node, state, next, extra, count });
+    cards.set(id, { node, state, next, sub });
     $('heads').append(node);
   }
   return cards.get(id);
@@ -97,7 +96,7 @@ function describe(view) {
         }
       : {
           next: t('nextOnUnknown', { when: '24:00' }),
-          count: t('atLeast', { duration: rel }),
+          count: t('atLeast', { duration: i18n.duration(next.at - now) }),
           line: t('lineOnUnknown', { rel }),
           event: 'on',
         };
@@ -120,10 +119,11 @@ function renderCard(group, view, text) {
   c.state.textContent = t(
     { off: 'statusOff', on: 'statusOn', unknown: 'statusUnknown' }[view.status],
   );
-  for (const key of ['next', 'extra', 'count']) {
-    c[key].textContent = text[key] ?? '';
-    c[key].hidden = !text[key];
-  }
+  c.next.textContent = text.next ?? '';
+  c.sub.textContent = text.count ?? text.extra ?? '';
+  c.sub.classList.toggle('count', Boolean(text.count));
+  // Text may be clipped to fit the fixed card size; the full text stays available on hover.
+  for (const node of [c.state, c.next, c.sub]) node.title = node.textContent;
 }
 
 function renderChart(entries, now) {
