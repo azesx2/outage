@@ -181,6 +181,46 @@ function render() {
     ? i18n.dateTime(Date.parse(data.sourceUpdatedAt))
     : t('notAvailable');
   $('meta-checked').textContent = `${i18n.dateTime(fetchedAt)} (${i18n.ago(fetchedAt, now)})`;
+  const verification = $('verification');
+  verification.replaceChildren(el('h2', { textContent: t('verificationTitle') }));
+  if (!data.verification) {
+    verification.append(el('p', { textContent: t('verificationLegacy') }));
+  }
+  for (const result of data.verification ?? []) {
+    const label = result.date ? i18n.date(result.date) : t(result.item);
+    const source = t(
+      { text: 'sourceText', image: 'sourceImage', none: 'sourceNone' }[result.source],
+    );
+    const status = t(
+      {
+        agree: 'comparisonAgree',
+        disagree: 'comparisonDisagree',
+        'text-only': 'comparisonTextOnly',
+        'image-only': 'comparisonImageOnly',
+        unavailable: 'comparisonUnavailable',
+      }[result.status],
+    );
+    const row = el(
+      'div',
+      { className: 'verification-result' },
+      el('h3', { textContent: label }),
+      el('p', { textContent: `${t('verificationSource', { source })} ${status}` }),
+    );
+    row.dataset.comparison = result.status;
+    if (result.differingGroups.length) {
+      row.append(
+        el('p', {
+          textContent: t('differingGroups', { groups: result.differingGroups.join(', ') }),
+        }),
+      );
+    }
+    if (result.imageUrl?.startsWith('https://api.loe.lviv.ua/media/')) {
+      row.append(
+        el('a', { href: result.imageUrl, rel: 'noopener', textContent: t('viewSourceImage') }),
+      );
+    }
+    verification.append(row);
+  }
   showState('content');
 }
 

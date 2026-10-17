@@ -35,6 +35,16 @@ jobs:
 
       - run: npm ci
 
+      - name: Install image parser
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-ukr
+          python3 -m venv .venv
+          .venv/bin/pip install -r requirements-image.txt
+
+      - name: Test image extraction
+        run: .venv/bin/python -m unittest discover -s test -p '*_test.py'
+
       - name: Run deterministic tests
         run: npm test
 
@@ -50,9 +60,10 @@ jobs:
           echo "url=${url%/}" >> "$GITHUB_OUTPUT"
 
       - name: Fetch and validate source
-        timeout-minutes: 3
+        timeout-minutes: 5
         env:
           PREVIOUS_URL: ${{ steps.pages.outputs.url }}/data/latest.json
+          PYTHON: .venv/bin/python
         run: node scripts/update.js --previous-url "$PREVIOUS_URL"
 
       - name: Upload diagnostics

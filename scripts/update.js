@@ -18,7 +18,7 @@ import {
   readPrevious,
   writeJsonAtomic,
 } from '../src/last-known-good.js';
-import { buildSnapshot } from '../src/snapshot.js';
+import { buildVerifiedSnapshot } from '../src/verified-snapshot.js';
 import { ITEMS } from '../src/source.js';
 
 const HINTS = {
@@ -80,6 +80,7 @@ async function saveDiagnostics(error, responses, now) {
 async function main() {
   let now = Date.now();
   let responses;
+  let imageReader;
   try {
     const previousUrl = args['previous-url'];
     const previous = previousUrl
@@ -94,13 +95,23 @@ async function main() {
       const fixture = JSON.parse(await readFile(args.fixture, 'utf8'));
       now = Date.parse(fixture.now);
       responses = fixture.responses;
+      imageReader = async (_response, key) => {
+        if (!fixture.imageResponses?.[key]) throw new Error('No fixture image result');
+        return fixture.imageResponses[key];
+      };
     } else {
       const fetched = await fetchSchedule();
       ({ responses, items } = fetched);
       if (fetched.warning) console.warn(`::warning::${fetched.warning}`);
     }
 
-    const snapshot = buildSnapshot(responses, now, items);
+    const snapshot = await buildVerifiedSnapshot(responses, now, items, { imageReader });
+    for (const result of snapshot.verification) {
+      console.log(`${result.item}: source=${result.source}, comparison=${result.status}`);
+      if (result.status === 'disagree' || result.source === 'image') {
+        console.warn(`::warning::${result.item}: ${result.status}; using ${result.source}`);
+      }
+    }
     assertCanReplace(previous, snapshot, now);
     await writeJsonAtomic(args.out, snapshot);
 

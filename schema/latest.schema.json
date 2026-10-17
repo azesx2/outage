@@ -15,6 +15,38 @@
     "days"
   ],
   "properties": {
+    "verification": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item",
+          "date",
+          "source",
+          "status",
+          "differingGroups",
+          "textError",
+          "imageError",
+          "imageUrl"
+        ],
+        "properties": {
+          "item": { "enum": ["today", "tomorrow"] },
+          "date": { "type": ["string", "null"], "format": "date" },
+          "source": { "enum": ["text", "image", "none"] },
+          "status": { "enum": ["agree", "disagree", "text-only", "image-only", "unavailable"] },
+          "differingGroups": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/groupId" },
+            "uniqueItems": true
+          },
+          "textError": { "type": ["string", "null"] },
+          "imageError": { "type": ["string", "null"] },
+          "imageUrl": { "type": ["string", "null"] }
+        }
+      }
+    },
     "schemaVersion": { "const": 1 },
     "sourceUrl": { "const": "https://poweron.loe.lviv.ua/" },
     "timezone": { "const": "Europe/Kyiv" },

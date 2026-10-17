@@ -295,3 +295,29 @@ td:first-child {
     font-size: 1.5rem;
   }
 }
+/* Source comparison is visible even when the primary text parser succeeds. */
+.verification {
+  margin-bottom: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 0 1rem;
+  font-size: 0.875rem;
+}
+.verification h2 {
+  grid-column: 1 / -1;
+}
+.verification h3 {
+  margin: 0.25rem 0;
+  font-size: 1rem;
+}
+.verification-result {
+  padding: 0.5rem 0;
+}
+.verification-result p {
+  margin: 0.4rem 0;
+}
+.verification-result[data-comparison='disagree'],
+.verification-result[data-comparison='image-only'] {
+  border-left: 4px solid #d97706;
+  padding-left: 0.75rem;
+}
