@@ -9,10 +9,11 @@ const dictionaries = {
     title: 'Графік відключень світла — Львівщина',
     loading: 'Завантаження графіка…',
     groupLegend: 'Ваша група',
+    groupApartment: 'Квартира',
+    groupHouse: 'Будинок',
     statusOff: 'Світла немає',
     statusOn: 'Світло є',
     statusUnknown: 'Немає даних на зараз',
-    statusUnknownHint: 'Графік на поточну добу не опубліковано або він ще не надійшов.',
     nextOn: ({ time, rel }) => `Увімкнення о ${time} (${rel})`,
     nextOnUnknown: ({ date }) =>
       `Відключення щонайменше до кінця доби ${date}. Графік на наступну добу ще не опубліковано.`,
@@ -25,8 +26,7 @@ const dictionaries = {
     dayHeading: ({ label, date }) => `${label}, ${date}`,
     noOutages: 'Відключень не заплановано',
     notPublished: 'Графік ще не опубліковано',
-    intervalOff: ({ from, to }) => `${from}–${to}`,
-    allGroups: 'Усі групи на сьогодні',
+    allGroups: 'Відключення сьогодні',
     groupColumn: 'Група',
     outagesColumn: 'Відключення',
     sourceUpdated: 'Оновлення джерела',
@@ -39,11 +39,8 @@ const dictionaries = {
     errorTitle: 'Дані недоступні',
     errorBody: 'Не вдалося завантажити графік. Скористайтеся офіційним сайтом Львівобленерго.',
     retry: 'Спробувати ще раз',
-    disclaimer:
-      'Неофіційне інформаційне відображення. Офіційним і пріоритетним джерелом є сайт Львівобленерго.',
     officialSource: 'Офіційний графік: poweron.loe.lviv.ua',
     rawData: 'Дані у форматі JSON',
-    timezoneNote: 'Час київський.',
   },
 };
 

@@ -77,7 +77,6 @@ h2 {
   margin: 0 0 12px;
 }
 
-.disclaimer,
 .page-footer {
   color: var(--muted);
   font-size: 0.875rem;
@@ -94,6 +93,15 @@ a {
 
 [hidden] {
   display: none !important;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .card {
@@ -147,14 +155,9 @@ button {
   padding: 0;
 }
 
-.groups legend {
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
 .group-options {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -208,11 +211,6 @@ button {
 
 .status p {
   margin: 0;
-}
-
-.status-group {
-  color: var(--muted);
-  font-size: 0.875rem;
 }
 
 .status-label {
@@ -278,32 +276,7 @@ button {
   justify-content: space-between;
   color: var(--muted);
   font-size: 0.75rem;
-  margin-bottom: 8px;
-}
-
-.intervals {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-variant-numeric: tabular-nums;
-}
-
-.intervals li {
-  padding: 4px 0;
-}
-
-.intervals li.off::before {
-  content: '';
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--off);
-  margin-right: 8px;
-}
-
-.intervals li.empty {
-  color: var(--muted);
+  margin-bottom: 0;
 }
 
 .meta {
@@ -361,10 +334,6 @@ td:first-child {
 }
 
 @media (max-width: 480px) {
-  .group-options {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
   .status-label {
     font-size: 1.6rem;
   }

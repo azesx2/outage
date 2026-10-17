@@ -144,10 +144,11 @@ test('every string used by the page exists', () => {
     'title',
     'loading',
     'groupLegend',
+    'groupApartment',
+    'groupHouse',
     'statusOff',
     'statusOn',
     'statusUnknown',
-    'statusUnknownHint',
     'today',
     'tomorrow',
     'noOutages',
@@ -161,10 +162,8 @@ test('every string used by the page exists', () => {
     'errorTitle',
     'errorBody',
     'retry',
-    'disclaimer',
     'officialSource',
     'rawData',
-    'timezoneNote',
   ]) {
     assert.equal(typeof i18n.t(key), 'string', key);
   }

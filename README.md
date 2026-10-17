@@ -53,7 +53,8 @@ Visitors only download static files from GitHub Pages. They never contact the so
 - **Frontend** ([docs/](docs/)): plain HTML, CSS and ES modules with no framework and no build step.
   [docs/schedule.js](docs/schedule.js) holds the pure status and next-event logic, which is
   unit-tested. [docs/i18n.js](docs/i18n.js) holds the Ukrainian strings; add a dictionary to support
-  another language.
+  another language. The page shows only the groups in `DISPLAY_GROUPS` in [docs/app.js](docs/app.js)
+  (2.1 as «Квартира», 3.2 as «Будинок»); `latest.json` still contains every group.
 
 ## Data format
 

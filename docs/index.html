@@ -24,7 +24,6 @@
   <body>
     <header class="page-header">
       <h1 data-i18n="title">Графік відключень світла — Львівщина</h1>
-      <p class="disclaimer" data-i18n="disclaimer"></p>
     </header>
 
     <main id="main">
@@ -43,12 +42,11 @@
         <p id="stale" class="stale" role="alert" hidden></p>
 
         <fieldset class="groups">
-          <legend data-i18n="groupLegend"></legend>
+          <legend class="visually-hidden" data-i18n="groupLegend"></legend>
           <div id="group-options" class="group-options"></div>
         </fieldset>
 
         <section id="status" class="card status">
-          <p class="status-group" id="status-group"></p>
           <p class="status-label" id="status-label" aria-live="polite"></p>
           <p class="status-next" id="status-next"></p>
         </section>
@@ -57,12 +55,10 @@
           <section class="card day" id="day-today" aria-labelledby="day-today-title">
             <h2 id="day-today-title"></h2>
             <div class="timeline" aria-hidden="true"></div>
-            <ul class="intervals"></ul>
           </section>
           <section class="card day" id="day-tomorrow" aria-labelledby="day-tomorrow-title">
             <h2 id="day-tomorrow-title"></h2>
             <div class="timeline" aria-hidden="true"></div>
-            <ul class="intervals"></ul>
           </section>
         </div>
 
@@ -99,7 +95,7 @@
         <a href="https://poweron.loe.lviv.ua/" rel="noopener" data-i18n="officialSource"></a>
       </p>
       <p>
-        <span data-i18n="timezoneNote"></span> <a href="data/latest.json" data-i18n="rawData"></a>
+        <a href="data/latest.json" data-i18n="rawData"></a>
       </p>
     </footer>
   </body>

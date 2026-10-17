@@ -8,6 +8,11 @@ const DATA_URL = 'data/latest.json';
 const STORAGE_KEY = 'loe-outage:group';
 const RENDER_EVERY_MS = 30_000;
 const RELOAD_EVERY_MS = 5 * 60_000;
+/** Groups shown on the page, in order. The data still contains every group. */
+const DISPLAY_GROUPS = [
+  { id: '2.1', labelKey: 'groupApartment' },
+  { id: '3.2', labelKey: 'groupHouse' },
+];
 
 const i18n = createI18n('uk');
 const { t } = i18n;
@@ -20,6 +25,9 @@ const el = (tag, props = {}, ...children) => {
 
 let data = null;
 let group = null;
+
+/** Display groups present in the loaded data. */
+const availableGroups = () => DISPLAY_GROUPS.filter((g) => data.groups.includes(g.id));
 
 const storage = {
   get() {
@@ -51,19 +59,20 @@ function showState(state) {
   $('content').hidden = state !== 'content';
 }
 
-function renderGroupOptions() {
+function renderGroupOptions(groups) {
   const container = $('group-options');
-  if (container.dataset.groups === data.groups.join()) return;
-  container.dataset.groups = data.groups.join();
+  const ids = groups.map((g) => g.id).join();
+  if (container.dataset.groups === ids) return;
+  container.dataset.groups = ids;
   container.replaceChildren(
-    ...data.groups.flatMap((g) => {
-      const input = el('input', { type: 'radio', name: 'group', id: `group-${g}`, value: g });
+    ...groups.flatMap(({ id, labelKey }) => {
+      const input = el('input', { type: 'radio', name: 'group', id: `group-${id}`, value: id });
       input.addEventListener('change', () => {
-        group = g;
-        storage.set(g);
+        group = id;
+        storage.set(id);
         render();
       });
-      return [input, el('label', { htmlFor: `group-${g}`, textContent: g })];
+      return [input, el('label', { htmlFor: `group-${id}`, textContent: t(labelKey) })];
     }),
   );
 }
@@ -71,12 +80,11 @@ function renderGroupOptions() {
 function renderStatus(view) {
   const card = $('status');
   card.dataset.status = view.status;
-  $('status-group').textContent = `${t('groupLegend')}: ${view.group}`;
   $('status-label').textContent = t(
     { off: 'statusOff', on: 'statusOn', unknown: 'statusUnknown' }[view.status],
   );
   const { next, now } = view;
-  let text = t('statusUnknownHint');
+  let text = '';
   if (next?.type === 'on') {
     text = next.known
       ? t('nextOn', { time: i18n.time(next.at), rel: i18n.relative(next.at, now) })
@@ -121,30 +129,11 @@ function renderDay(id, labelKey, day, now) {
       ),
     );
   }
-
-  const list = section.querySelector('.intervals');
-  if (!day.published) {
-    list.replaceChildren(el('li', { className: 'empty', textContent: t('notPublished') }));
-  } else if (day.intervals.length === 0) {
-    list.replaceChildren(el('li', { className: 'empty', textContent: t('noOutages') }));
-  } else {
-    list.replaceChildren(
-      ...day.intervals.map((iv) =>
-        el('li', {
-          className: 'off',
-          textContent: t('intervalOff', {
-            from: i18n.time(iv.start),
-            to: i18n.endTime(iv.end, day.date),
-          }),
-        }),
-      ),
-    );
-  }
 }
 
-function renderOverview(now) {
+function renderOverview(groups, now) {
   const date = kyivDate(now);
-  const rows = overview(data, date);
+  const rows = overview(data, date)?.filter((row) => groups.some((g) => g.id === row.group));
   const body = $('overview-body');
   if (!rows) {
     body.replaceChildren(el('tr', {}, el('td', { colSpan: 2, textContent: t('notPublished') })));
@@ -155,7 +144,7 @@ function renderOverview(now) {
       el(
         'tr',
         { className: g === group ? 'selected' : '' },
-        el('td', { textContent: g }),
+        el('td', { textContent: t(groups.find((d) => d.id === g).labelKey) }),
         el('td', {
           textContent:
             intervals.length === 0
@@ -172,8 +161,14 @@ function renderOverview(now) {
 function render() {
   if (!data) return;
   const now = Date.now();
-  if (!data.groups.includes(group)) group = data.groups[0];
-  renderGroupOptions();
+  const groups = availableGroups();
+  if (groups.length === 0) {
+    console.error('None of the display groups are present in the data:', DISPLAY_GROUPS);
+    showState('error');
+    return;
+  }
+  if (!groups.some((g) => g.id === group)) group = groups[0].id;
+  renderGroupOptions(groups);
   const checked = $(`group-${group}`);
   if (checked) checked.checked = true;
 
@@ -185,7 +180,7 @@ function render() {
   renderStatus(view);
   renderDay('day-today', 'today', view.today, now);
   renderDay('day-tomorrow', 'tomorrow', view.tomorrow, now);
-  renderOverview(now);
+  renderOverview(groups, now);
   $('meta-source').textContent = view.sourceUpdatedAt
     ? i18n.dateTime(view.sourceUpdatedAt)
     : t('notAvailable');
