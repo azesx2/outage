@@ -1,21 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { REASONS as ALL_REASONS } from '../src/errors.js';
 import { loadJsonDir } from './helpers.js';
 
 // Guards the fixture contract that the Stage 2 parser tests will rely on.
-const REASONS = new Set([
-  'unexpected-response-shape',
-  'item-identity-mismatch',
-  'unknown-line',
-  'missing-groups',
-  'duplicate-group',
-  'invalid-time',
-  'off-grid-time',
-  'empty-or-reversed-interval',
-  'overlapping-intervals',
-  'date-out-of-range',
-  'updated-at-in-future',
-]);
+const REASONS = new Set(ALL_REASONS);
 const OFFSET_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00\+0[23]:00$/;
 
 const fixtures = loadJsonDir('source');
