@@ -4,7 +4,6 @@
   --text: #16181d;
   --muted: #5b6270;
   --border: #dde1e7;
-  --accent: #f5a524;
   --focus: #1f6feb;
   --on: #1d7a46;
   --on-bg: #e3f4ea;
@@ -95,15 +94,6 @@ a {
   display: none !important;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -148,83 +138,52 @@ button {
   font-weight: 600;
 }
 
-/* Group picker: native radios styled as chips (arrow keys move between them). */
+/* One card per displayed group, side by side when there is room. */
 .groups {
-  border: 0;
-  margin: 16px 0 0;
-  padding: 0;
-}
-
-.group-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 0 16px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
-.group-options input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
+.group h2 {
+  font-size: 1.25rem;
 }
 
-.group-options label {
-  display: block;
-  text-align: center;
-  padding: 10px 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
+/* Light indicator: always visible per group. */
+.indicator {
+  border: 2px solid var(--unknown);
+  border-radius: var(--radius);
+  background: var(--unknown-bg);
+  padding: 12px 16px;
+  margin-bottom: 16px;
 }
 
-.group-options input:checked + label {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #1b1300;
-}
-
-.group-options input:focus-visible + label {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
-}
-
-.status {
-  border-width: 2px;
-}
-
-.status[data-status='off'] {
+.indicator[data-status='off'] {
   background: var(--off-bg);
   border-color: var(--off);
 }
 
-.status[data-status='on'] {
+.indicator[data-status='on'] {
   background: var(--on-bg);
   border-color: var(--on);
 }
 
-.status[data-status='unknown'] {
-  background: var(--unknown-bg);
-  border-color: var(--unknown);
-}
-
-.status p {
+.indicator p {
   margin: 0;
 }
 
 .status-label {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 700;
   line-height: 1.2;
-  margin: 4px 0 8px !important;
+  margin-bottom: 6px !important;
 }
 
-.status[data-status='off'] .status-label {
+.indicator[data-status='off'] .status-label {
   color: var(--off);
 }
 
-.status[data-status='on'] .status-label {
+.indicator[data-status='on'] .status-label {
   color: var(--on);
 }
 
@@ -232,14 +191,16 @@ button {
   font-size: 1.05rem;
 }
 
-.days {
-  display: grid;
-  gap: 0 16px;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+.status-countdown {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-.days .card {
-  margin-bottom: 0;
+.day h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 12px 0 6px;
 }
 
 .timeline {
@@ -320,10 +281,6 @@ th {
   font-size: 0.875rem;
 }
 
-tr.selected td {
-  background: var(--warn-bg);
-}
-
 td:first-child {
   font-weight: 600;
   white-space: nowrap;
@@ -335,6 +292,6 @@ td:first-child {
 
 @media (max-width: 480px) {
   .status-label {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
   }
 }

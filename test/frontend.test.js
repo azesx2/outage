@@ -128,6 +128,19 @@ test('formats times in Kyiv regardless of the machine time zone', () => {
   assert.equal(i18n.endTime(at('2026-10-17T22:00:00+03:00'), '2026-10-17'), '22:00');
 });
 
+test('next-event wording: today, 11:00, tomorrow and midnight', () => {
+  const i18n = createI18n('uk');
+  const now = at('2026-10-17T09:00:00+03:00');
+  assert.equal(i18n.when(at('2026-10-17T20:00:00+03:00'), now), 'о 20:00');
+  assert.equal(i18n.when(at('2026-10-17T11:00:00+03:00'), now), 'об 11:00');
+  assert.equal(i18n.when(at('2026-10-18T10:30:00+03:00'), now), 'завтра о 10:30');
+  assert.equal(i18n.when(at('2026-10-18T00:00:00+03:00'), now), 'о 24:00');
+  assert.equal(
+    i18n.t('nextOn', { when: i18n.when(at('2026-10-17T22:00:00+03:00'), now) }),
+    'Світло з’явиться о 22:00',
+  );
+});
+
 test('relative and elapsed durations', () => {
   const i18n = createI18n('uk');
   const now = at('2026-10-17T20:00:00+03:00');
@@ -143,7 +156,6 @@ test('every string used by the page exists', () => {
   for (const key of [
     'title',
     'loading',
-    'groupLegend',
     'groupApartment',
     'groupHouse',
     'statusOff',

@@ -8,17 +8,18 @@ const dictionaries = {
     locale: 'uk-UA',
     title: 'Графік відключень світла — Львівщина',
     loading: 'Завантаження графіка…',
-    groupLegend: 'Ваша група',
     groupApartment: 'Квартира',
     groupHouse: 'Будинок',
     statusOff: 'Світла немає',
     statusOn: 'Світло є',
     statusUnknown: 'Немає даних на зараз',
-    nextOn: ({ time, rel }) => `Увімкнення о ${time} (${rel})`,
-    nextOnUnknown: ({ date }) =>
-      `Відключення щонайменше до кінця доби ${date}. Графік на наступну добу ще не опубліковано.`,
-    nextOff: ({ time, rel }) => `Наступне відключення о ${time} (${rel})`,
+    nextOff: ({ when }) => `Відключення ${when}`,
+    nextOn: ({ when }) => `Світло з’явиться ${when}`,
+    nextOnUnknown: ({ when }) => `Світла не буде щонайменше до ${when}`,
     nextNone: ({ date }) => `Відключень не заплановано до кінця доби ${date}`,
+    at: ({ time }) => (time.startsWith('11:') ? `об ${time}` : `о ${time}`),
+    tomorrowAt: ({ time }) => `завтра ${time.startsWith('11:') ? 'об' : 'о'} ${time}`,
+    atLeast: ({ duration }) => `щонайменше ${duration}`,
     inDuration: ({ h, m }) =>
       h === 0 ? `через ${m} хв` : m === 0 ? `через ${h} год` : `через ${h} год ${m} хв`,
     today: 'Сьогодні',
@@ -80,6 +81,14 @@ export function createI18n(lang = 'uk') {
     endTime: (ms, date) => (kyivDate(ms) > date ? '24:00' : timeFormat.format(ms)),
     date: (isoDate) => dateFormat.format(Date.parse(`${isoDate}T12:00:00Z`)),
     dateTime: (ms) => dateTimeFormat.format(ms),
+    /** "о 20:00", "об 11:00", "завтра о 10:00"; midnight ending today reads "о 24:00". */
+    when(ms, now) {
+      const today = kyivDate(now);
+      const time = timeFormat.format(ms);
+      if (kyivDate(ms) === today) return t('at', { time });
+      if (time === '00:00' && kyivDate(ms - 1) === today) return t('at', { time: '24:00' });
+      return t('tomorrowAt', { time });
+    },
     relative: (ms, now) => {
       const minutes = Math.max(0, Math.round((ms - now) / 60_000));
       return t('inDuration', { h: Math.floor(minutes / 60), m: minutes % 60 });

@@ -2,10 +2,16 @@
 // All dynamic text is set via textContent; nothing from the data is parsed as HTML.
 
 import { createI18n } from './i18n.js';
-import { assertSupported, computeView, kyivDate, kyivMidnight, overview } from './schedule.js';
+import {
+  assertSupported,
+  computeView,
+  kyivDate,
+  kyivMidnight,
+  overview,
+  STALE_AFTER_MS,
+} from './schedule.js';
 
 const DATA_URL = 'data/latest.json';
-const STORAGE_KEY = 'loe-outage:group';
 const RENDER_EVERY_MS = 30_000;
 const RELOAD_EVERY_MS = 5 * 60_000;
 /** Groups shown on the page, in order. The data still contains every group. */
@@ -24,27 +30,8 @@ const el = (tag, props = {}, ...children) => {
 };
 
 let data = null;
-let group = null;
-
-/** Display groups present in the loaded data. */
-const availableGroups = () => DISPLAY_GROUPS.filter((g) => data.groups.includes(g.id));
-
-const storage = {
-  get() {
-    try {
-      return localStorage.getItem(STORAGE_KEY);
-    } catch {
-      return null;
-    }
-  },
-  set(value) {
-    try {
-      localStorage.setItem(STORAGE_KEY, value);
-    } catch {
-      // Private mode or blocked storage: the choice just is not remembered.
-    }
-  },
-};
+/** Card element references per group id, created once and updated on every render. */
+const cards = new Map();
 
 function applyStaticStrings() {
   document.title = t('title');
@@ -59,58 +46,71 @@ function showState(state) {
   $('content').hidden = state !== 'content';
 }
 
-function renderGroupOptions(groups) {
-  const container = $('group-options');
-  const ids = groups.map((g) => g.id).join();
-  if (container.dataset.groups === ids) return;
-  container.dataset.groups = ids;
-  container.replaceChildren(
-    ...groups.flatMap(({ id, labelKey }) => {
-      const input = el('input', { type: 'radio', name: 'group', id: `group-${id}`, value: id });
-      input.addEventListener('change', () => {
-        group = id;
-        storage.set(id);
-        render();
-      });
-      return [input, el('label', { htmlFor: `group-${id}`, textContent: t(labelKey) })];
-    }),
+function createDay() {
+  const heading = el('h3');
+  const timeline = el('div', { className: 'timeline', ariaHidden: 'true' });
+  const ticks = el(
+    'div',
+    { className: 'ticks', ariaHidden: 'true' },
+    ...['00', '06', '12', '18', '24'].map((h) => el('span', { textContent: h })),
   );
+  return { node: el('div', { className: 'day' }, heading, timeline, ticks), heading, timeline };
 }
 
-function renderStatus(view) {
-  const card = $('status');
-  card.dataset.status = view.status;
-  $('status-label').textContent = t(
+function createCard({ id, labelKey }) {
+  const titleId = `group-${id.replace('.', '-')}-title`;
+  const label = el('p', { className: 'status-label', ariaLive: 'polite' });
+  const next = el('p', { className: 'status-next' });
+  const countdown = el('p', { className: 'status-countdown' });
+  const indicator = el('div', { className: 'indicator' }, label, next, countdown);
+  const today = createDay();
+  const tomorrow = createDay();
+  const node = el(
+    'section',
+    { className: 'card group' },
+    el('h2', { id: titleId, textContent: t(labelKey) }),
+    indicator,
+    today.node,
+    tomorrow.node,
+  );
+  node.setAttribute('aria-labelledby', titleId);
+  return { node, indicator, label, next, countdown, today, tomorrow };
+}
+
+function renderIndicator(card, view) {
+  const { next, now } = view;
+  card.indicator.dataset.status = view.status;
+  card.label.textContent = t(
     { off: 'statusOff', on: 'statusOn', unknown: 'statusUnknown' }[view.status],
   );
-  const { next, now } = view;
   let text = '';
-  if (next?.type === 'on') {
-    text = next.known
-      ? t('nextOn', { time: i18n.time(next.at), rel: i18n.relative(next.at, now) })
-      : t('nextOnUnknown', { date: i18n.date(kyivDate(next.at - 1)) });
-  } else if (next?.type === 'off') {
-    text = t('nextOff', { time: i18n.time(next.at), rel: i18n.relative(next.at, now) });
+  let countdown = '';
+  if (next?.type === 'off') {
+    text = t('nextOff', { when: i18n.when(next.at, now) });
+    countdown = i18n.relative(next.at, now);
+  } else if (next?.type === 'on' && next.known) {
+    text = t('nextOn', { when: i18n.when(next.at, now) });
+    countdown = i18n.relative(next.at, now);
+  } else if (next?.type === 'on') {
+    // The outage runs to the end of published data; the real end is not known yet.
+    text = t('nextOnUnknown', { when: '24:00' });
+    countdown = t('atLeast', { duration: i18n.relative(next.at, now) });
   } else if (next?.type === 'none') {
     text = t('nextNone', { date: i18n.date(kyivDate(next.until - 1)) });
   }
-  $('status-next').textContent = text;
+  card.next.textContent = text;
+  card.countdown.textContent = countdown;
+  card.countdown.hidden = countdown === '';
 }
 
-function renderDay(id, labelKey, day, now) {
-  const section = $(id);
-  section.querySelector('h2').textContent = t('dayHeading', {
-    label: t(labelKey),
-    date: i18n.date(day.date),
-  });
-
-  const timeline = section.querySelector('.timeline');
-  timeline.classList.toggle('unpublished', !day.published);
-  const start = kyivMidnight(day.date);
+function renderDay(day, dayView, labelKey, now) {
+  day.heading.textContent = t('dayHeading', { label: t(labelKey), date: i18n.date(dayView.date) });
+  day.timeline.classList.toggle('unpublished', !dayView.published);
+  const start = kyivMidnight(dayView.date);
   const length = kyivMidnight(kyivDate(start + 36 * 3_600_000)) - start; // 23, 24 or 25 h
   const pct = (ms) => `${(((ms - start) / length) * 100).toFixed(3)}%`;
-  timeline.replaceChildren(
-    ...day.intervals.map((iv) =>
+  day.timeline.replaceChildren(
+    ...dayView.intervals.map((iv) =>
       el('div', {
         className: 'segment',
         style: `left:${pct(iv.start)};width:calc(${pct(iv.end)} - ${pct(iv.start)})`,
@@ -118,16 +118,7 @@ function renderDay(id, labelKey, day, now) {
     ),
   );
   if (now >= start && now < start + length) {
-    timeline.append(el('div', { className: 'now', style: `left:${pct(now)}` }));
-  }
-  if (!timeline.nextElementSibling?.classList.contains('ticks')) {
-    timeline.after(
-      el(
-        'div',
-        { className: 'ticks', ariaHidden: 'true' },
-        ...['00', '06', '12', '18', '24'].map((h) => el('span', { textContent: h })),
-      ),
-    );
+    day.timeline.append(el('div', { className: 'now', style: `left:${pct(now)}` }));
   }
 }
 
@@ -140,11 +131,11 @@ function renderOverview(groups, now) {
     return;
   }
   body.replaceChildren(
-    ...rows.map(({ group: g, intervals }) =>
+    ...rows.map(({ group, intervals }) =>
       el(
         'tr',
-        { className: g === group ? 'selected' : '' },
-        el('td', { textContent: t(groups.find((d) => d.id === g).labelKey) }),
+        {},
+        el('td', { textContent: t(groups.find((g) => g.id === group).labelKey) }),
         el('td', {
           textContent:
             intervals.length === 0
@@ -161,31 +152,35 @@ function renderOverview(groups, now) {
 function render() {
   if (!data) return;
   const now = Date.now();
-  const groups = availableGroups();
+  const groups = DISPLAY_GROUPS.filter((g) => data.groups.includes(g.id));
   if (groups.length === 0) {
     console.error('None of the display groups are present in the data:', DISPLAY_GROUPS);
     showState('error');
     return;
   }
-  if (!groups.some((g) => g.id === group)) group = groups[0].id;
-  renderGroupOptions(groups);
-  const checked = $(`group-${group}`);
-  if (checked) checked.checked = true;
 
-  const view = computeView(data, group, now);
-  const stale = $('stale');
-  stale.hidden = !view.stale;
-  stale.textContent = view.stale ? t('staleWarning', { ago: i18n.ago(view.fetchedAt, now) }) : '';
+  for (const group of groups) {
+    if (!cards.has(group.id)) {
+      const card = createCard(group);
+      cards.set(group.id, card);
+      $('groups').append(card.node);
+    }
+    const card = cards.get(group.id);
+    const view = computeView(data, group.id, now);
+    renderIndicator(card, view);
+    renderDay(card.today, view.today, 'today', now);
+    renderDay(card.tomorrow, view.tomorrow, 'tomorrow', now);
+  }
 
-  renderStatus(view);
-  renderDay('day-today', 'today', view.today, now);
-  renderDay('day-tomorrow', 'tomorrow', view.tomorrow, now);
+  const fetchedAt = Date.parse(data.fetchedAt);
+  const stale = now - fetchedAt > STALE_AFTER_MS;
+  $('stale').hidden = !stale;
+  $('stale').textContent = stale ? t('staleWarning', { ago: i18n.ago(fetchedAt, now) }) : '';
   renderOverview(groups, now);
-  $('meta-source').textContent = view.sourceUpdatedAt
-    ? i18n.dateTime(view.sourceUpdatedAt)
+  $('meta-source').textContent = data.sourceUpdatedAt
+    ? i18n.dateTime(Date.parse(data.sourceUpdatedAt))
     : t('notAvailable');
-  $('meta-checked').textContent =
-    `${i18n.dateTime(view.fetchedAt)} (${i18n.ago(view.fetchedAt, now)})`;
+  $('meta-checked').textContent = `${i18n.dateTime(fetchedAt)} (${i18n.ago(fetchedAt, now)})`;
   showState('content');
 }
 
@@ -206,7 +201,6 @@ async function load() {
 }
 
 applyStaticStrings();
-group = storage.get();
 $('retry').addEventListener('click', () => {
   showState('loading');
   load();

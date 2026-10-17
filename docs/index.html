@@ -41,26 +41,8 @@
       <div id="content" hidden>
         <p id="stale" class="stale" role="alert" hidden></p>
 
-        <fieldset class="groups">
-          <legend class="visually-hidden" data-i18n="groupLegend"></legend>
-          <div id="group-options" class="group-options"></div>
-        </fieldset>
-
-        <section id="status" class="card status">
-          <p class="status-label" id="status-label" aria-live="polite"></p>
-          <p class="status-next" id="status-next"></p>
-        </section>
-
-        <div class="days">
-          <section class="card day" id="day-today" aria-labelledby="day-today-title">
-            <h2 id="day-today-title"></h2>
-            <div class="timeline" aria-hidden="true"></div>
-          </section>
-          <section class="card day" id="day-tomorrow" aria-labelledby="day-tomorrow-title">
-            <h2 id="day-tomorrow-title"></h2>
-            <div class="timeline" aria-hidden="true"></div>
-          </section>
-        </div>
+        <!-- One card per displayed group, built by app.js. -->
+        <div id="groups" class="groups"></div>
 
         <dl class="meta">
           <div>
