@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createI18n } from '../docs/i18n.js';
 import {
   assertSupported,
+  chartStart,
   computeView,
   kyivMidnight,
   kyivWallInstant,
@@ -225,4 +226,24 @@ test('verification summary reports the most serious outcome across published day
     },
   );
   assert.equal(createI18n('uk').t('checkDisagree', { groups: '1.1' }), 'текст ≠ фото (1.1)');
+});
+
+test('chart starts at the full hour four hours before now, never before midnight', () => {
+  const midnight = at('2026-10-17T00:00:00+03:00');
+  const past = 4 * 3_600_000;
+  assert.equal(
+    chartStart(midnight, at('2026-10-17T19:20:00+03:00'), past),
+    at('2026-10-17T15:00:00+03:00'),
+  );
+  assert.equal(
+    chartStart(midnight, at('2026-10-17T19:00:00+03:00'), past),
+    at('2026-10-17T15:00:00+03:00'),
+  );
+  assert.equal(chartStart(midnight, at('2026-10-17T03:10:00+03:00'), past), midnight);
+  // Winter time (+02:00) still lands on a Kyiv full hour.
+  const winter = at('2026-12-17T00:00:00+02:00');
+  assert.equal(
+    chartStart(winter, at('2026-12-17T10:45:00+02:00'), past),
+    at('2026-12-17T06:00:00+02:00'),
+  );
 });

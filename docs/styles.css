@@ -304,6 +304,12 @@ button {
   overflow: hidden;
 }
 
+/* Today with its earlier hours cut off: square top edge, as the bar continues upwards. */
+.track.cut {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
 .blk {
   position: absolute;
   left: 0;

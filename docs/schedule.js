@@ -49,6 +49,14 @@ export function nextDate(date) {
   return new Date(Date.parse(`${date}T00:00:00Z`) + 24 * HOUR).toISOString().slice(0, 10);
 }
 
+/**
+ * Where the chart starts: the full hour `pastMs` before `now`, but never before `dayStart`
+ * (today's midnight). Kyiv offsets are whole hours, so UTC hours are Kyiv hours.
+ */
+export function chartStart(dayStart, now, pastMs) {
+  return Math.max(dayStart, Math.floor((now - pastMs) / HOUR) * HOUR);
+}
+
 /** Throws unless the payload looks like a schema-1 snapshot this page understands. */
 export function assertSupported(data) {
   if (

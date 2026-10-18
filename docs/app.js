@@ -4,6 +4,7 @@
 import { createI18n } from './i18n.js';
 import {
   assertSupported,
+  chartStart,
   computeView,
   kyivDate,
   kyivMidnight,
@@ -18,6 +19,8 @@ const RENDER_EVERY_MS = 30_000;
 const RELOAD_EVERY_MS = 5 * 60_000;
 /** Vertical scale of the chart: 48 hours ≈ 980 px. */
 const PX_PER_MINUTE = 0.34;
+/** How much of today's past the chart keeps above the now line. */
+const PAST_SHOWN_MS = 4 * 60 * 60_000;
 /** Height of each day heading: above the chart and between today and tomorrow. */
 const DAY_HEADING_PX = 34;
 /** Room the now-line labels need below the line (up to three wrapped lines on phones). */
@@ -132,9 +135,10 @@ function renderCard(group, view, text) {
 
 function renderChart(entries, now) {
   const { today, tomorrow } = entries[0].view;
-  const start = kyivMidnight(today.date);
   const midnight = kyivMidnight(tomorrow.date);
   const end = kyivMidnight(nextDate(tomorrow.date));
+  // Today's earlier hours are cut off: the chart starts about four hours before now.
+  const start = chartStart(kyivMidnight(today.date), now, PAST_SHOWN_MS);
   /** Chart y for an instant: below the top heading, and below the day divider from midnight on. */
   const y = (ms) =>
     DAY_HEADING_PX +
@@ -143,14 +147,14 @@ function renderChart(entries, now) {
   const px = (n) => `${n.toFixed(1)}px`;
   const days = [today, tomorrow];
 
-  // Each day is its own rounded bar; intervals are positioned relative to their day's start.
+  // Each day is its own rounded bar; intervals are positioned relative to its first shown instant.
   const side = ({ view }, cls) => {
     const node = el('div', { className: `side ${cls}` });
     for (const day of [view.today, view.tomorrow]) {
-      const dayStart = kyivMidnight(day.date);
+      const dayStart = Math.max(kyivMidnight(day.date), start);
       const dayPx = (ms) => ((ms - dayStart) / 60_000) * PX_PER_MINUTE;
       const track = el('div', {
-        className: 'track',
+        className: `track${dayStart > kyivMidnight(day.date) ? ' cut' : ''}`,
         style: `top:${px(y(dayStart))};height:${px(dayPx(kyivMidnight(nextDate(day.date))))}`,
       });
       node.append(track);
@@ -166,10 +170,13 @@ function renderChart(entries, now) {
         continue;
       }
       for (const iv of day.intervals) {
-        const height = dayPx(iv.end) - dayPx(iv.start);
+        if (iv.end <= dayStart) continue;
+        // An outage that began before the cut-off shows its visible part with its real times.
+        const shownStart = Math.max(iv.start, dayStart);
+        const height = dayPx(iv.end) - dayPx(shownStart);
         const block = el('div', {
           className: 'blk',
-          style: `top:${px(dayPx(iv.start))};height:${px(height)}`,
+          style: `top:${px(dayPx(shownStart))};height:${px(height)}`,
         });
         if (height >= MIN_LABEL_PX) {
           block.append(
@@ -188,11 +195,14 @@ function renderChart(entries, now) {
   const axis = el('div', { className: 'axis', ariaHidden: 'true' });
   for (const day of days) {
     for (let h = 2; h < 24; h += 2) {
+      const at = kyivWallInstant(day.date, h * 60);
+      // Skip hours cut off above the chart, and one right at its top edge.
+      if (at < start + 30 * 60_000) continue;
       axis.append(
         el('span', {
           className: day.published ? '' : 'faded',
           textContent: `${String(h).padStart(2, '0')}:00`,
-          style: `top:${px(y(kyivWallInstant(day.date, h * 60)))}`,
+          style: `top:${px(y(at))}`,
         }),
       );
     }
