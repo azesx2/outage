@@ -185,7 +185,6 @@ test('every string used by the page exists', () => {
     'tomorrowPending',
     'lineNoneToday',
     'lineNone',
-    'unpublishedHint',
     'checkAgree',
     'checkTextOnly',
     'checkImageOnly',

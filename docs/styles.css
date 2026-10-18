@@ -391,11 +391,6 @@ button {
   border-radius: 6px;
 }
 
-.unpub span {
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
 /* Very narrow bars (small phones): smaller text so «опубліковано» fits; break words only as a
    last resort. */
 @container (max-width: 130px) {
@@ -407,10 +402,6 @@ button {
   .unpub strong {
     font-size: 0.74rem;
     padding: 3px 5px;
-  }
-
-  .unpub span {
-    font-size: 0.68rem;
   }
 }
 

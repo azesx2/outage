@@ -166,7 +166,6 @@ function renderChart(entries, now) {
             'div',
             { className: 'unpub' },
             el('strong', { textContent: t('unpublishedDay', { date: i18n.date(day.date) }) }),
-            el('span', { textContent: t('unpublishedHint') }),
           ),
         );
         continue;

@@ -32,7 +32,6 @@ const dictionaries = {
     lineNoneToday: 'до 24:00 без відключень',
     lineNone: 'без відключень',
     unpublishedDay: ({ date }) => `Графік на ${date} ще не опубліковано`,
-    unpublishedHint: 'З’явиться тут автоматично',
     hours: ({ h }) => `${h} год`,
     hoursMinutes: ({ h, m }) => `${h} год ${m} хв`,
     minutes: ({ m }) => `${m} хв`,
