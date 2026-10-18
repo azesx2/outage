@@ -18,6 +18,10 @@ const RENDER_EVERY_MS = 30_000;
 const RELOAD_EVERY_MS = 5 * 60_000;
 /** Vertical scale of the chart: 48 hours ≈ 980 px. */
 const PX_PER_MINUTE = 0.34;
+/** Height of each day heading: above the chart and between today and tomorrow. */
+const DAY_HEADING_PX = 34;
+/** Room the now-line labels need below the line (up to three wrapped lines on phones). */
+const NOW_LABEL_ROOM_PX = 56;
 /** Hide the text inside outage blocks shorter than this, in pixels. */
 const MIN_LABEL_PX = 16;
 /** Groups shown on the page: the first on the left, the second on the right. */
@@ -131,24 +135,30 @@ function renderChart(entries, now) {
   const start = kyivMidnight(today.date);
   const midnight = kyivMidnight(tomorrow.date);
   const end = kyivMidnight(nextDate(tomorrow.date));
-  const y = (ms) => ((ms - start) / 60_000) * PX_PER_MINUTE;
+  /** Chart y for an instant: below the top heading, and below the day divider from midnight on. */
+  const y = (ms) =>
+    DAY_HEADING_PX +
+    ((ms - start) / 60_000) * PX_PER_MINUTE +
+    (ms >= midnight ? DAY_HEADING_PX : 0);
   const px = (n) => `${n.toFixed(1)}px`;
+  const days = [today, tomorrow];
 
+  // Each day is its own rounded bar; intervals are positioned relative to their day's start.
   const side = ({ view }, cls) => {
-    const track = el('div', { className: 'track' });
+    const node = el('div', { className: `side ${cls}` });
     for (const day of [view.today, view.tomorrow]) {
       const dayStart = kyivMidnight(day.date);
-      const dayEnd = kyivMidnight(nextDate(day.date));
+      const dayPx = (ms) => ((ms - dayStart) / 60_000) * PX_PER_MINUTE;
+      const track = el('div', {
+        className: 'track',
+        style: `top:${px(y(dayStart))};height:${px(dayPx(kyivMidnight(nextDate(day.date))))}`,
+      });
+      node.append(track);
       if (!day.published) {
-        // Leave the 3 px midnight gap above tomorrow; today starts at the top edge.
-        const inset = dayStart === start ? 0 : 3;
         track.append(
           el(
             'div',
-            {
-              className: 'unpub',
-              style: `top:${px(y(dayStart) + inset)};height:${px(y(dayEnd) - y(dayStart) - inset)}`,
-            },
+            { className: 'unpub' },
             el('strong', { textContent: t('unpublishedDay', { date: i18n.date(day.date) }) }),
             el('span', { textContent: t('unpublishedHint') }),
           ),
@@ -156,10 +166,10 @@ function renderChart(entries, now) {
         continue;
       }
       for (const iv of day.intervals) {
-        const height = y(iv.end) - y(iv.start);
+        const height = dayPx(iv.end) - dayPx(iv.start);
         const block = el('div', {
           className: 'blk',
-          style: `top:${px(y(iv.start))};height:${px(height)}`,
+          style: `top:${px(dayPx(iv.start))};height:${px(height)}`,
         });
         if (height >= MIN_LABEL_PX) {
           block.append(
@@ -172,27 +182,15 @@ function renderChart(entries, now) {
         track.append(block);
       }
     }
-    track.append(el('div', { className: 'gap', style: `top:${px(y(midnight) - 1)}` }));
-    return el('div', { className: `side ${cls}` }, track);
+    return node;
   };
 
   const axis = el('div', { className: 'axis', ariaHidden: 'true' });
-  axis.append(
-    el('span', { className: 'day', textContent: t('axisToday'), style: `top:${px(0)}` }),
-    el('span', {
-      className: 'day',
-      textContent: t('axisTomorrow'),
-      style: `top:${px(y(midnight))}`,
-    }),
-  );
-  for (const [day, faded] of [
-    [today, false],
-    [tomorrow, !tomorrow.published],
-  ]) {
+  for (const day of days) {
     for (let h = 2; h < 24; h += 2) {
       axis.append(
         el('span', {
-          className: faded ? 'faded' : '',
+          className: day.published ? '' : 'faded',
           textContent: `${String(h).padStart(2, '0')}:00`,
           style: `top:${px(y(kyivWallInstant(day.date, h * 60)))}`,
         }),
@@ -200,19 +198,30 @@ function renderChart(entries, now) {
     }
   }
 
+  // Day headings: "Сьогодні, 17 жовтня" above the chart, "Завтра, 18 жовтня" between the days.
+  const heading = (day, key, top, cls) =>
+    el(
+      'div',
+      { className: `dayhead ${cls}`, style: `top:${px(top)};height:${px(DAY_HEADING_PX)}` },
+      el('span', { textContent: t(key, { date: i18n.date(day.date) }) }),
+    );
+
   const chart = $('chart');
   chart.style.height = px(y(end));
   chart.replaceChildren(
     side(entries[0], 'l'),
     axis,
     side(entries[1], 'r'),
-    el('div', { className: 'daysplit', style: `top:${px(y(midnight))}` }),
+    heading(today, 'dayToday', 0, 'first'),
+    heading(tomorrow, 'dayTomorrow', y(midnight) - DAY_HEADING_PX, 'next'),
   );
   if (now >= start && now < end) {
+    // Too close to the divider for the labels to hang below the line: show them above it.
+    const above = now < midnight && y(midnight) - DAY_HEADING_PX - y(now) < NOW_LABEL_ROOM_PX;
     chart.append(
       el(
         'div',
-        { className: 'nowline', style: `top:${px(y(now))}` },
+        { className: `nowline${above ? ' above' : ''}`, style: `top:${px(y(now))}` },
         el('b', { textContent: i18n.time(now) }),
         ...entries.map(({ text }, i) =>
           el('em', {

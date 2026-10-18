@@ -294,9 +294,11 @@ button {
   position: relative;
 }
 
+/* One rounded bar per day; app.js sets its top and height. */
 .track {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
   background: var(--lit);
   border-radius: 8px;
   overflow: hidden;
@@ -334,18 +336,9 @@ button {
   content: '· ';
 }
 
-.gap {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--surface);
-}
-
 .unpub {
   position: absolute;
-  left: 0;
-  right: 0;
+  inset: 0;
   display: grid;
   align-content: start;
   justify-items: center;
@@ -383,29 +376,36 @@ button {
   opacity: 0.35;
 }
 
-.axis .day {
-  color: var(--text);
-  font-family: inherit;
-  font-weight: 700;
-  font-size: 0.68rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 1px 4px;
-  z-index: 2; /* above the dashed midnight line */
-}
-
-.axis .day:first-child {
-  transform: none;
-}
-
-.daysplit {
+/* Day headings, like a chat's date divider: a thin rule with the date in the middle. */
+.dayhead {
   position: absolute;
   left: 0;
   right: 0;
-  border-top: 2px dashed var(--muted);
-  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
   pointer-events: none;
+}
+
+.dayhead::before,
+.dayhead::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* The top heading sits high, leaving room for the now-line time label just after midnight. */
+.dayhead.first {
+  align-items: flex-start;
+}
+
+.dayhead.first::before,
+.dayhead.first::after {
+  margin-top: 0.6em;
 }
 
 /* "Now": dashed amber line, outlined time label, coloured next-event labels on each side. */
@@ -446,6 +446,12 @@ button {
   padding: 1px 8px;
   border-radius: 4px;
   overflow-wrap: anywhere; /* last resort when one word is wider than the bar */
+}
+
+/* Near the end of the day the labels go above the line so they never cover the next heading. */
+.nowline.above em {
+  top: auto;
+  bottom: 4px;
 }
 
 .nowline em:empty {

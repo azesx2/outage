@@ -182,8 +182,6 @@ test('every string used by the page exists', () => {
     'nextNoneToday',
     'nextNoneTomorrow',
     'tomorrowPending',
-    'axisToday',
-    'axisTomorrow',
     'lineNoneToday',
     'lineNone',
     'unpublishedHint',
@@ -201,6 +199,7 @@ test('every string used by the page exists', () => {
   ]) {
     assert.equal(typeof i18n.t(key), 'string', key);
   }
+  assert.equal(i18n.t('dayTomorrow', { date: '18 жовтня' }), 'Завтра, 18 жовтня');
   assert.equal(i18n.t('lineOn', { rel: 'через 40 хв' }), 'світло через 40 хв');
   assert.equal(i18n.t('lineOff', { rel: 'через 1 год' }), 'відключення через 1 год');
   assert.equal(

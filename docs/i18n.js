@@ -24,8 +24,8 @@ const dictionaries = {
     atLeast: ({ duration }) => `щонайменше ${duration}`,
     inDuration: ({ h, m }) =>
       h === 0 ? `через ${m} хв` : m === 0 ? `через ${h} год` : `через ${h} год ${m} хв`,
-    axisToday: 'сьогодні',
-    axisTomorrow: 'завтра',
+    dayToday: ({ date }) => `Сьогодні, ${date}`,
+    dayTomorrow: ({ date }) => `Завтра, ${date}`,
     lineOn: ({ rel }) => `світло ${rel}`,
     lineOnUnknown: ({ rel }) => `світло щонайменше ${rel}`,
     lineOff: ({ rel }) => `відключення ${rel}`,
