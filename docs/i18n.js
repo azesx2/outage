@@ -31,6 +31,8 @@ const dictionaries = {
     lineOff: ({ rel }) => `відключення ${rel}`,
     lineNoneToday: 'до 24:00 без відключень',
     lineNone: 'без відключень',
+    layoutHorizontal: 'Горизонтально',
+    layoutVertical: 'Вертикально',
     unpublishedDay: ({ date }) => `Графік на ${date} ще не опубліковано`,
     hours: ({ h }) => `${h} год`,
     hoursMinutes: ({ h, m }) => `${h} год ${m} хв`,

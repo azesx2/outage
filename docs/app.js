@@ -15,12 +15,15 @@ import {
 } from './schedule.js';
 
 const DATA_URL = 'data/latest.json';
+const LAYOUT_KEY = 'outage.layout';
 const RENDER_EVERY_MS = 30_000;
 const RELOAD_EVERY_MS = 5 * 60_000;
 /** Vertical scale of the chart: 48 hours ≈ 980 px. */
 const PX_PER_MINUTE = 0.34;
 /** How much of today's past the chart keeps above the now line. */
 const PAST_SHOWN_MS = 4 * 60 * 60_000;
+/** Hour labels this close to now are hidden in the horizontal chart, to make room for its time label. */
+const NOW_AXIS_GAP_MS = 3 * 60 * 60_000;
 /** Height of each day heading: above the chart and between today and tomorrow. */
 const DAY_HEADING_PX = 34;
 /** Room the now-line labels need below the line (up to three wrapped lines on phones). */
@@ -45,8 +48,33 @@ const el = (tag, props = {}, ...children) => {
 };
 
 let data = null;
+/** 'vertical' or 'horizontal'; remembered per browser. */
+let layout = readLayout();
 /** Status card elements per group id, created once and updated on every render. */
 const cards = new Map();
+
+function readLayout() {
+  try {
+    return localStorage.getItem(LAYOUT_KEY) === 'horizontal' ? 'horizontal' : 'vertical';
+  } catch {
+    return 'vertical';
+  }
+}
+
+/** Shows the chosen chart; the button offers the other layout. */
+function applyLayout() {
+  const horizontal = layout === 'horizontal';
+  $('chart').hidden = horizontal;
+  $('hchart').hidden = !horizontal;
+  document.documentElement.dataset.layout = layout;
+  const label = t(horizontal ? 'layoutVertical' : 'layoutHorizontal');
+  $('layout').replaceChildren(
+    el('span', { className: 'icon', ariaHidden: 'true', textContent: horizontal ? '↕' : '↔' }),
+    el('span', { className: 'text', textContent: label }),
+  );
+  $('layout').title = label;
+  $('layout').ariaLabel = label;
+}
 
 function applyStaticStrings() {
   document.title = t('title');
@@ -245,6 +273,133 @@ function renderChart(entries, now) {
   }
 }
 
+/** Hour label for compact block text: "17" on the hour, "10:30" otherwise; midnight ending a day is "24". */
+function shortTime(ms, date) {
+  const time = i18n.endTime(ms, date);
+  return time.endsWith(':00') ? time.slice(0, 2) : time;
+}
+
+/**
+ * Horizontal chart: one strip per day, Квартира above the hour axis and Будинок below it.
+ * Both strips use the same scale (a whole day across the width), so hours line up. Today is shown
+ * in full: unlike the vertical chart, cutting its past would not save any space here.
+ * Positions are percentages of the day.
+ */
+function renderTimeline(entries, now) {
+  const { today, tomorrow } = entries[0].view;
+  const strips = [today, tomorrow].map((day, index) => {
+    const dayStart = kyivMidnight(day.date);
+    const dayEnd = kyivMidnight(nextDate(day.date));
+    const from = dayStart;
+    const pct = (ms) => `${(((ms - dayStart) / (dayEnd - dayStart)) * 100).toFixed(3)}%`;
+    const width = (a, b) => `${(((b - a) / (dayEnd - dayStart)) * 100).toFixed(3)}%`;
+    const showNow = index === 0 && now >= from && now < dayEnd;
+
+    const bar = ({ view }) => {
+      const groupDay = index === 0 ? view.today : view.tomorrow;
+      const track = el('div', {
+        className: 'htrack',
+        style: `left:${pct(from)};width:${width(from, dayEnd)}`,
+      });
+      if (!groupDay.published) {
+        track.classList.add('unpub');
+        return el('div', { className: 'hrow' }, track);
+      }
+      for (const iv of groupDay.intervals) {
+        if (iv.end <= from) continue;
+        const shownStart = Math.max(iv.start, from);
+        const full = `${i18n.time(iv.start)}–${i18n.endTime(iv.end, day.date)}`;
+        // Three lengths of the same text; CSS shows the longest that fits the block's width.
+        const short = `${shortTime(iv.start, day.date)}–${shortTime(iv.end, day.date)}`;
+        const block = el(
+          'div',
+          {
+            // Half-hour times make the short text longer ("10:30–14"), so it needs a wider block.
+            className: `hblk${short.includes(':') ? ' halfh' : ''}`,
+            title: `${full} · ${i18n.duration(iv.end - iv.start)}`,
+            style: `left:${width(from, shownStart)};width:${width(shownStart, iv.end)}`,
+          },
+          el('span', {
+            className: 'full',
+            textContent: `${full} · ${i18n.duration(iv.end - iv.start)}`,
+          }),
+          el('span', { className: 'mid', textContent: full }),
+          el('span', { className: 'short', textContent: short }),
+        );
+        track.append(block);
+      }
+      return el('div', { className: 'hrow' }, track);
+    };
+
+    const caption = ({ group, text }, cls) =>
+      el(
+        'p',
+        { className: `hcap ${cls}` },
+        el('span', { textContent: t(group.labelKey) }),
+        ...(showNow && text.line
+          ? [el('em', { className: `ev-${text.event}`, textContent: text.line })]
+          : []),
+      );
+
+    const axis = el('div', { className: 'haxis', ariaHidden: 'true' });
+    // An unpublished day shows its message in the axis row instead of hours.
+    for (let h = 0; h <= 24 && day.published; h += 3) {
+      const at = h === 24 ? dayEnd : kyivWallInstant(day.date, h * 60);
+      // Leave room for the now-line time label.
+      if (showNow && Math.abs(at - now) < NOW_AXIS_GAP_MS) continue;
+      const cls = [
+        day.published ? '' : 'faded',
+        h % 6 ? 'minor' : '',
+        h === 0 ? 'first' : '',
+        h === 24 ? 'last' : '',
+      ];
+      axis.append(
+        el('span', {
+          className: cls.filter(Boolean).join(' '),
+          textContent: `${String(h).padStart(2, '0')}:00`,
+          style: `left:${pct(at)}`,
+        }),
+      );
+    }
+
+    const body = el('div', { className: 'hbody' }, bar(entries[0]), axis, bar(entries[1]));
+    if (!day.published) {
+      // Keep the message clear of the now line: put it in the other half of the strip.
+      const side = now - dayStart < (dayEnd - dayStart) / 2 ? 'right' : 'left';
+      body.append(
+        el('p', {
+          className: `hunpub${showNow ? ` ${side}` : ''}`,
+          textContent: t('unpublishedDay', { date: i18n.date(day.date) }),
+        }),
+      );
+    }
+    if (showNow) {
+      body.append(
+        el(
+          'div',
+          { className: 'hnow', style: `left:${pct(now)}` },
+          el('b', { textContent: i18n.time(now) }),
+        ),
+      );
+    }
+    return el(
+      'section',
+      { className: 'hday' },
+      el(
+        'div',
+        { className: `dayhead${index === 0 ? ' first' : ''}` },
+        el('span', {
+          textContent: t(index === 0 ? 'dayToday' : 'dayTomorrow', { date: i18n.date(day.date) }),
+        }),
+      ),
+      caption(entries[0], 'top'),
+      body,
+      caption(entries[1], 'bottom'),
+    );
+  });
+  $('hchart').replaceChildren(...strips);
+}
+
 /** Source time for the one-line status: "18:56" today, just "17.10" for an older publication. */
 function sourceStamp(ms, now) {
   return kyivDate(ms) === kyivDate(now) ? i18n.time(ms) : i18n.shortDate(ms);
@@ -296,7 +451,8 @@ function render() {
     return { group, view, text: describe(view) };
   });
   for (const { group, view, text } of entries) renderCard(group, view, text);
-  renderChart(entries, now);
+  if (layout === 'horizontal') renderTimeline(entries, now);
+  else renderChart(entries, now);
 
   const fetchedAt = Date.parse(data.fetchedAt);
   const stale = now - fetchedAt > STALE_AFTER_MS;
@@ -323,6 +479,17 @@ async function load() {
 }
 
 applyStaticStrings();
+applyLayout();
+$('layout').addEventListener('click', () => {
+  layout = layout === 'horizontal' ? 'vertical' : 'horizontal';
+  try {
+    localStorage.setItem(LAYOUT_KEY, layout);
+  } catch {
+    // Storage unavailable (private mode): the choice lasts until the page is reloaded.
+  }
+  applyLayout();
+  render();
+});
 $('retry').addEventListener('click', () => {
   showState('loading');
   load();

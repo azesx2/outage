@@ -71,6 +71,12 @@ main,
   padding: 0 16px;
 }
 
+/* Horizontal layout: day strips gain from width, so the page uses the whole window. */
+[data-layout='horizontal'] main,
+[data-layout='horizontal'] .page-footer {
+  max-width: none;
+}
+
 main {
   padding-top: 12px;
 }
@@ -129,9 +135,34 @@ button {
 }
 
 /* One small line: "Оновлено 18:56 · перевірено 19:17 (5 хв тому) · текст і зображення збігаються". */
+/* Status line and the layout button share the top row. */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.layout-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.layout-toggle .icon {
+  font-size: 0.95rem;
+}
+
 /* Always one line so the page below never shifts; anything that does not fit ends in "…". */
 .statusline {
-  margin: 0 0 12px;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
   font-size: 0.8rem;
   line-height: 1.4;
   white-space: nowrap;
@@ -531,7 +562,251 @@ button {
   padding-bottom: 32px;
 }
 
+/* Horizontal chart: per day a strip with Квартира above the hour axis and Будинок below. */
+.hday + .hday {
+  margin-top: 12px;
+}
+
+.hday .dayhead,
+.hday .dayhead.first {
+  position: static;
+  align-items: center;
+  height: 26px;
+}
+
+.hday .dayhead.first::before,
+.hday .dayhead.first::after {
+  margin-top: 0;
+}
+
+.hcap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 0;
+  min-height: 1.5em;
+  font-size: 0.75rem;
+}
+
+.hcap.top {
+  margin-bottom: 4px;
+}
+
+.hcap.bottom {
+  margin-top: 4px;
+}
+
+.hcap span {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hcap em {
+  font-style: normal;
+  font-family: var(--font-num);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 0 6px;
+  border-radius: 4px;
+}
+
+.hcap em.ev-on {
+  color: var(--lit-ink);
+  box-shadow: inset 0 0 0 1px var(--lit);
+}
+
+.hcap em.ev-off {
+  color: var(--off-ink);
+  box-shadow: inset 0 0 0 1px var(--off-line);
+}
+
+.hbody {
+  position: relative;
+  display: grid;
+  grid-template-rows: 30px 20px 30px;
+}
+
+.hrow {
+  position: relative;
+}
+
+.htrack {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--lit);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.htrack.unpub {
+  background: repeating-linear-gradient(135deg, var(--hatch-a) 0 8px, var(--hatch-b) 8px 16px);
+}
+
+/* Outage block; shows the longest of its three texts that fits its own width. */
+.hblk {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  white-space: nowrap;
+  background: var(--dark);
+  color: var(--dark-text);
+  font-family: var(--font-num);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  border-left: 1px solid var(--surface);
+  border-right: 1px solid var(--surface);
+}
+
+.hblk .mid,
+.hblk .short {
+  display: none;
+}
+
+@container (max-width: 150px) {
+  .hblk .full {
+    display: none;
+  }
+
+  .hblk .mid {
+    display: inline;
+  }
+}
+
+@container (max-width: 88px) {
+  .hblk .mid {
+    display: none;
+  }
+
+  .hblk .short {
+    display: inline;
+  }
+}
+
+@container (max-width: 44px) {
+  .hblk .short {
+    display: none;
+  }
+}
+
+@container (max-width: 62px) {
+  .hblk.halfh .short {
+    display: none;
+  }
+}
+
+.haxis {
+  position: relative;
+}
+
+.haxis span {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-num);
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.haxis span.first {
+  transform: translate(0, -50%);
+}
+
+.haxis span.last {
+  transform: translate(-100%, -50%);
+}
+
+.haxis span.faded {
+  opacity: 0.35;
+}
+
+/* Phones: label every 6 hours instead of every 3. */
+@media (max-width: 600px) {
+  .haxis span.minor {
+    display: none;
+  }
+}
+
+.hunpub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  max-width: 100%;
+  margin: 0;
+  padding: 2px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+/* Beside the now line: half the width, wrapping to a second line if needed. */
+.hunpub.left,
+.hunpub.right {
+  transform: translate(0, -50%);
+  max-width: 55%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.hunpub.left {
+  left: 0;
+}
+
+.hunpub.right {
+  left: auto;
+  right: 0;
+}
+
+.hnow {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  border-left: 2px dashed var(--now);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.hnow b {
+  position: absolute;
+  top: 50%;
+  left: -1px;
+  transform: translate(-50%, -50%);
+  background: var(--surface);
+  color: var(--text);
+  border: 2px solid var(--now);
+  font-family: var(--font-num);
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
 @media (max-width: 520px) {
+  /* Phones: the layout button shows only its arrow; the label stays for screen readers. */
+  .layout-toggle {
+    padding: 3px 8px;
+  }
+
+  .layout-toggle .text {
+    display: none;
+  }
+
   .board {
     padding: 10px;
   }

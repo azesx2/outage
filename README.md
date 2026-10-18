@@ -91,7 +91,9 @@ Visitors only download static files from GitHub Pages. They never contact the so
   (2.1 as «Квартира» on the left, 3.2 as «Будинок» on the right); `latest.json` still contains every
   group. Each group gets a status card and a vertical 48-hour bar (today and tomorrow) around a
   shared hour axis: green means power, graphite means an outage, amber marks the current time, and
-  stripes mark a day whose schedule is not published yet.
+  stripes mark a day whose schedule is not published yet. A button at the top switches to a horizontal
+  layout (one strip per day, Квартира above the hours and Будинок below); the choice is remembered in
+  the browser.
 
 ## Data format
 

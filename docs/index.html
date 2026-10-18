@@ -35,14 +35,19 @@
       </section>
 
       <div id="content" hidden>
-        <!-- One line: source update time, last check and the text/image comparison. -->
-        <p id="statusline" class="statusline" aria-live="polite"></p>
+        <div class="topbar">
+          <!-- One line: source update time, last check and the text/image comparison. -->
+          <p id="statusline" class="statusline" aria-live="polite"></p>
+          <button type="button" id="layout" class="layout-toggle"></button>
+        </div>
         <p id="stale" class="stale" role="alert" hidden></p>
 
-        <!-- Status cards and the 48-hour chart; Квартира left, Будинок right. Built by app.js. -->
+        <!-- Status cards and the 48-hour chart, vertical (Квартира left, Будинок right) or
+             horizontal (Квартира above, Будинок below). Built by app.js. -->
         <div id="heads" class="heads"></div>
-        <div class="board">
+        <div id="board" class="board">
           <div id="chart" class="chart"></div>
+          <div id="hchart" class="hchart" hidden></div>
         </div>
       </div>
     </main>
