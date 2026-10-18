@@ -193,7 +193,7 @@ function renderChart(entries, now) {
       axis.append(
         el('span', {
           className: faded ? 'faded' : '',
-          textContent: String(h).padStart(2, '0'),
+          textContent: `${String(h).padStart(2, '0')}:00`,
           style: `top:${px(y(kyivWallInstant(day.date, h * 60)))}`,
         }),
       );
