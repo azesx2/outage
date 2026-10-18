@@ -27,6 +27,8 @@ const DAY_HEADING_PX = 34;
 const NOW_LABEL_ROOM_PX = 56;
 /** Hide the text inside outage blocks shorter than this, in pixels. */
 const MIN_LABEL_PX = 16;
+/** Blocks shorter than this cannot hold two lines; on narrow bars they show only the time range. */
+const TWO_LINE_PX = 26;
 /** Groups shown on the page: the first on the left, the second on the right. */
 const DISPLAY_GROUPS = [
   { id: '2.1', labelKey: 'groupApartment' },
@@ -175,7 +177,7 @@ function renderChart(entries, now) {
         const shownStart = Math.max(iv.start, dayStart);
         const height = dayPx(iv.end) - dayPx(shownStart);
         const block = el('div', {
-          className: 'blk',
+          className: `blk${height < TWO_LINE_PX ? ' short' : ''}`,
           style: `top:${px(dayPx(shownStart))};height:${px(height)}`,
         });
         if (height >= MIN_LABEL_PX) {

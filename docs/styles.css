@@ -294,6 +294,11 @@ button {
   position: relative;
 }
 
+/* Bars are size containers so block labels can adapt to the bar's own width. */
+.side {
+  container-type: inline-size;
+}
+
 /* One rounded bar per day; app.js sets its top and height. */
 .track {
   position: absolute;
@@ -334,6 +339,30 @@ button {
   justify-content: flex-end;
 }
 
+/* Narrow bars (phones): "10:30–14:00 · 3 год 30 хв" does not fit on one line, so the duration
+   goes on a second line, or is dropped in blocks too short for two lines. */
+@container (max-width: 175px) {
+  .blk {
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 0;
+    line-height: 1.15;
+  }
+
+  .side.l .blk {
+    align-items: flex-end;
+  }
+
+  .blk small::before {
+    content: none;
+  }
+
+  .blk.short small {
+    display: none;
+  }
+}
+
 .blk small {
   opacity: 0.75;
 }
@@ -365,6 +394,24 @@ button {
 .unpub span {
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+/* Very narrow bars (small phones): smaller text so «опубліковано» fits; break words only as a
+   last resort. */
+@container (max-width: 130px) {
+  .unpub {
+    padding: 14px 4px;
+    overflow-wrap: anywhere;
+  }
+
+  .unpub strong {
+    font-size: 0.74rem;
+    padding: 3px 5px;
+  }
+
+  .unpub span {
+    font-size: 0.68rem;
+  }
 }
 
 .axis span {
