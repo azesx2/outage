@@ -200,6 +200,17 @@ saves the raw responses to `diagnostics/live-responses.json` and reports the val
 4. Push to `main`. The workflow runs on the push, then at minutes 17 and 47 of every hour.
    Scheduled runs only happen on the default branch.
 5. The site is published at `https://<user>.github.io/<repo>/`.
+6. **Optional, recommended: reliable trigger.** GitHub often delays or skips scheduled runs, so
+   cron-job.org dispatches the workflow every 30 minutes as well. Add two repository secrets
+   (Settings → Secrets and variables → Actions):
+   - `CRONJOB_API_KEY`: cron-job.org Console → Settings → API keys;
+   - `DISPATCH_TOKEN`: a fine-grained GitHub token for this repository only, with
+     **Actions: Read and write**.
+
+   The `cron` job ([scripts/sync-cron.js](scripts/sync-cron.js)) then creates or updates the job
+   on every push to `main`, or on **Run workflow** with "sync cron-job.org" ticked. The token is
+   stored in the cron-job.org job's request headers. To rotate it, update the secret and push or
+   run the workflow with that option. Without the secrets, the job is skipped with a warning.
 
 The workflow is [.github/workflows/update.yml](.github/workflows/update.yml):
 
@@ -224,6 +235,7 @@ The workflow is [.github/workflows/update.yml](.github/workflows/update.yml):
 | `[empty-would-overwrite]`                            | The source is temporarily empty. Published data is kept and this clears once the source republishes or the day passes.                                                                                                                                      |
 | `[source-regressed]`                                 | The source served an older publication. Published data is kept and this usually clears on the next run.                                                                                                                                                     |
 | `[previous-unavailable]`                             | The published `latest.json` could not be downloaded. Check that GitHub Pages is enabled and the site loads. The run stops rather than publishing without protection.                                                                                        |
+| Runs come hours apart                                | GitHub skipped scheduled runs. Set up the cron-job.org trigger (GitHub setup, step 6) and check its run history on cron-job.org.                                                                                                                            |
 | Workflow stopped running on schedule                 | The `keepalive` job should prevent this. If GitHub still disabled it, re-enable it under **Actions → Update schedule → Enable workflow** and check the `keepalive` job's log.                                                                               |
 | Need fresh data now                                  | **Actions → Update schedule → Run workflow.**                                                                                                                                                                                                               |
 

@@ -2,9 +2,15 @@ name: Update schedule
 
 on:
   schedule:
-    # Every 30 minutes, off the top of the hour to avoid the busiest cron slots.
+    # Every 30 minutes, off the top of the hour to avoid the busiest cron slots. GitHub often
+    # delays or skips these, so cron-job.org also dispatches the workflow (see the cron job).
     - cron: '17,47 * * * *'
   workflow_dispatch:
+    inputs:
+      sync_cron:
+        description: Also create or update the cron-job.org trigger
+        type: boolean
+        default: false
   push:
     branches: [main]
 
@@ -107,3 +113,26 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
         run: gh api --method PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/update.yml/enable"
+
+  cron:
+    # Keeps the cron-job.org trigger in sync with scripts/sync-cron.js. Runs on push and on request
+    # only: the trigger's own dispatches must not call the cron-job.org API (100 requests/day).
+    name: Sync cron-job.org trigger
+    if: github.event_name == 'push' || inputs.sync_cron
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - env:
+          CRONJOB_API_KEY: ${{ secrets.CRONJOB_API_KEY }}
+          DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+        run: node scripts/sync-cron.js
